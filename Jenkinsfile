@@ -9,7 +9,8 @@ pipeline {
         stage('Cloner le code') {
             steps {
                 echo "Clonage du dépôt Git..."
-                git url: 'https://github.com/user-nermine/DevOps_Project.git'
+                git branch: 'manel'
+                url: 'https://github.com/user-nermine/DevOps_Project.git'
             }
         }
 
