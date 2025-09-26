@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         // Variables d'environnement si besoin
-        PROJECT_NAME = 'demo-project'
+        PROJECT_NAME = 'project'
     }
 
     stages {
