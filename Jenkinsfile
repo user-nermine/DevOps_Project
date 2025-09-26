@@ -1,5 +1,5 @@
 pipeline {
-    agent any // Utilise un agent Jenkins disponible
+    agent any
 
     environment {
         PROJECT_NAME = 'projet'
@@ -30,13 +30,13 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline terminé avec succès !'
+            echo 'Pipeline termine avec succes.'
         }
         failure {
-            echo ' Le pipeline a échoué.'
+            echo 'Le pipeline a echoue.'
         }
         always {
-            echo  Fin du pipeline (success ou échec).'
+            echo 'Fin du pipeline (reussite ou echec).'
         }
     }
 }
