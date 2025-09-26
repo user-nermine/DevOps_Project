@@ -2,8 +2,8 @@ pipeline {
     agent any  // Utilise un agent Jenkins disponible
 
     environment {
-        // Variables d'environnement si besoin
-        PROJECT_NAME = 'demo-project'
+        
+        PROJECT_NAME = 'projet'
     }
 
     stages {
@@ -27,12 +27,7 @@ pipeline {
             }
         }
 
-        stage('Analyse statique (optionnel)') {
-            steps {
-                echo 'Analyse statique (ex: Checkstyle, PMD, SonarQube)'
-                // Exemple : sh 'mvn checkstyle:check'
-            }
-        }
+       
 
         
     }
