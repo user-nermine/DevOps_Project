@@ -1,0 +1,9 @@
+tn\esprit\services\UserServiceImpl.class
+tn\esprit\entities\Order.class
+tn\esprit\entities\Category.class
+tn\esprit\entities\User.class
+tn\esprit\controllers\UserController.class
+tn\esprit\Main.class
+tn\esprit\utils\DataBase.class
+tn\esprit\entities\Product.class
+tn\esprit\services\IGenericService.class
