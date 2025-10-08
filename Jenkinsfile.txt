@@ -48,4 +48,5 @@ pipeline {
             echo 'Fin du pipeline (success ou échec)'
         }
     }
-}
+
+}//tet automatique
