@@ -19,7 +19,12 @@ pipeline {
                 sh 'mvn clean'
             }
         }
-
+stage('test') {
+            steps {
+                echo 'build declenche automatiquement'
+                sh 'mvn clean'
+            }
+        }
         stage('Tests unitaires') {
             steps {
                 echo 'Lancement des tests...'
@@ -50,3 +55,4 @@ pipeline {
     }
 
 }//tet automatique
+
