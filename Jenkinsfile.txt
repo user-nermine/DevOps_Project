@@ -54,7 +54,8 @@ stage('test') {
         }
     }
 
-}//tet automatique
+}
+
 
 
 
