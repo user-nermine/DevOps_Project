@@ -5,6 +5,9 @@ pipeline {
         // Variables d'environnement si besoin
         PROJECT_NAME = 'demo-project'
     }
+   tools {
+     maven 'maven'
+   }
 
     stages {
         stage('Cloner le code') {
@@ -38,9 +41,16 @@ stage('test') {
                 // Exemple : sh 'mvn checkstyle:check'
             }
         }
+       stage('SonarQube Analysis') {
 
-        
-    }
+          environment {
+
+            SONAR_HOST_URL = 'http://192.168.33.10:9000/' // Replace with your SonarQube URL
+            SONAR_AUTH_TOKEN = credentials('sonarqube') // Store your token in Jenkins credentials
+
+            steps {
+               sh 'mvn sonar: sonar -Dsonar.projectKey=sample_project -Dsonar.host.url=$SONAR_HOST_URL -Ds 
+       }
 
     post {
         success {
@@ -55,6 +65,7 @@ stage('test') {
     }
 
 }
+
 
 
 
