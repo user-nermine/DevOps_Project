@@ -1,13 +1,15 @@
 pipeline {
-    agent any  // Utilise un agent Jenkins disponible
+    agent any
 
     environment {
-        // Variables d'environnement si besoin
         PROJECT_NAME = 'demo-project'
+        SONAR_HOST_URL = 'http://192.168.33.10:9000/'
+        SONAR_AUTH_TOKEN = credentials('sonarqube') // token stored in Jenkins credentials
     }
-   tools {
-     maven 'maven'
-   }
+
+    tools {
+        maven 'maven'
+    }
 
     stages {
         stage('Cloner le code') {
@@ -19,15 +21,17 @@ pipeline {
         stage('Compiler le projet') {
             steps {
                 echo 'Compilation avec Maven...'
-                sh 'mvn clean'
+                sh 'mvn clean compile'
             }
         }
-stage('test') {
+
+        stage('Test') {
             steps {
-                echo 'build declenche automatiquement'
-                sh 'mvn clean'
+                echo 'Build déclenché automatiquement'
+                sh 'mvn clean verify'
             }
         }
+
         stage('Tests unitaires') {
             steps {
                 echo 'Lancement des tests...'
@@ -37,36 +41,33 @@ stage('test') {
 
         stage('Analyse statique (optionnel)') {
             steps {
-                echo 'Analyse statique (ex: Checkstyle, PMD, SonarQube)'
-                // Exemple : sh 'mvn checkstyle:check'
+                echo 'Analyse statique (ex: Checkstyle, PMD, etc.)'
+                // sh 'mvn checkstyle:check'
             }
         }
-       stage('SonarQube Analysis') {
 
-          environment {
-
-            SONAR_HOST_URL = 'http://192.168.33.10:9000/' // Replace with your SonarQube URL
-            SONAR_AUTH_TOKEN = credentials('sonarqube') // Store your token in Jenkins credentials
-
+        stage('SonarQube Analysis') {
             steps {
-               sh 'mvn sonar: sonar -Dsonar.projectKey=sample_project -Dsonar.host.url=$SONAR_HOST_URL -Ds 
-       }
-
-    post {
-        success {
-            echo 'Pipeline terminé avec succès ! '
-        }
-        failure {
-            echo 'Le pipeline a échoué '
-        }
-        always {
-            echo 'Fin du pipeline (success ou échec)'
+                echo 'Analyse SonarQube en cours...'
+                sh """
+                    mvn sonar:sonar \
+                        -Dsonar.projectKey=sample_project \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_AUTH_TOKEN}
+                """
+            }
         }
     }
 
+    post {
+        success {
+            echo '✅ Pipeline terminé avec succès !'
+        }
+        failure {
+            echo '❌ Le pipeline a échoué.'
+        }
+        always {
+            echo '🏁 Fin du pipeline (success ou échec).'
+        }
+    }
 }
-
-
-
-
-
