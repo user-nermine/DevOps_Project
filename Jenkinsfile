@@ -2,6 +2,9 @@ pipeline {
     agent any
 
     environment {
+        IMAGE_NAME = 'mon-image'
+        IMAGE_TAG = 'latest'
+
         PROJECT_NAME = 'demo-project'
         SONAR_HOST_URL = 'http://192.168.33.10:9000/'
         SONAR_AUTH_TOKEN = credentials('sonarqube') // token stored in Jenkins credentials
@@ -69,6 +72,22 @@ pipeline {
                  }
             }
         }
+
+          stage('Build Docker Image') {
+            steps {
+                dir('Order') {
+                    script {
+                        def image = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                    }
+                }
+            }
+          }
+
+                stage('List Docker Images') {
+            steps {
+                sh 'docker images'
+            }
+        }
     }
 
     post {
@@ -83,6 +102,7 @@ pipeline {
         }
     }
 }
+
 
 
 
