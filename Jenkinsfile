@@ -4,13 +4,15 @@ pipeline {
     environment {
         IMAGE_NAME = 'mon-image'
         IMAGE_TAG = 'latest'
-
+        JAVA_HOME = "${tool 'JAVA_HOME'}"
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
         PROJECT_NAME = 'demo-project'
         SONAR_HOST_URL = 'http://192.168.33.10:9000/'
         SONAR_AUTH_TOKEN = credentials('sonarqube') // token stored in Jenkins credentials
     }
 
     tools {
+         jdk 'JAVA_HOME' 
         maven 'maven'
     }
 
@@ -102,6 +104,7 @@ pipeline {
         }
     }
 }
+
 
 
 
