@@ -76,13 +76,14 @@ pipeline {
             echo '✅ Pipeline terminé avec succès !'
         }
         failure {
-            echo '    Le pipeline a échoué.'
+            echo ' Le pipeline a échoué.'
         }
         always {
             echo '🏁 Fin du pipeline (success ou échec).'
         }
     }
 }
+
 
 
 
