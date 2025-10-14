@@ -25,21 +25,27 @@ pipeline {
         stage('Compiler le projet') {
             steps {
                 echo 'Compilation avec Maven...'
+                dir('Order'){
                 sh 'mvn clean compile'
+                }
             }
         }
 
         stage('Test') {
             steps {
                 echo 'Build déclenché automatiquement'
+                 dir('Order'){
                 sh 'mvn clean verify'
+                 }
             }
         }
 
         stage('Tests unitaires') {
             steps {
                 echo 'Lancement des tests...'
+                 dir('Order'){
                 sh 'mvn test'
+                 }  
             }
         }
 
@@ -53,12 +59,14 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 echo 'Analyse SonarQube en cours...'
+                 dir('Order'){
                 sh """
                     mvn sonar:sonar \
                         -Dsonar.projectKey=sample_project \
                         -Dsonar.host.url=${SONAR_HOST_URL} \
                         -Dsonar.login=${SONAR_AUTH_TOKEN}
                 """
+                 }
             }
         }
     }
@@ -75,6 +83,7 @@ pipeline {
         }
     }
 }
+
 
 
 
