@@ -12,7 +12,7 @@ pipeline {
     }
 
     stages {
-        stage('Cloner le code') {
+        stage('Clooner le code') {
             steps {
                 git url: 'https://github.com/user-nermine/DevOps_Project.git'
             }
@@ -79,6 +79,7 @@ pipeline {
         }
     }
 }
+
 
 
 
