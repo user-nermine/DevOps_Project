@@ -18,7 +18,7 @@ pipeline {
                 dir('DevOps_Project/Order/pom.xml') { 
                     script {
                         echo 'Building the Maven project...'
-                        bat 'mvn clean install -DskipTests=false'
+                        bat 'mvn clean install'
                     }
                 }
             }
