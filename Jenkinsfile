@@ -12,11 +12,7 @@ pipeline {
     }
 
     stages {
-        stage('Cloner le code') {
-            steps {
-                git url: 'https://github.com/user-nermine/DevOps_Project.git'
-            }
-        }
+       
          stage('git') {
             steps {
                 checkout scmGit(branches: [[name: '*/Nermine']],
@@ -79,6 +75,7 @@ pipeline {
         }
     }
 }
+
 
 
 
