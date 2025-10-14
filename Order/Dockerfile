@@ -12,5 +12,5 @@ COPY target/*.jar app.jar
 # Exposer un port (si ton appli écoute sur un port, sinon optionnel)
 EXPOSE 8080
 
-# Lancer l'application Java
+#  Lancer l'application Java
 CMD ["java", "-jar", "app.jar"]
