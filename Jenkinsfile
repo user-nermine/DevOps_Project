@@ -17,6 +17,14 @@ pipeline {
                 git url: 'https://github.com/user-nermine/DevOps_Project.git'
             }
         }
+         stage('git') {
+            steps {
+                checkout scmGit(branches: [[name: '*/Nermine']],
+                extensions: [],
+                userRemoteConfigs: [[credentialsId: 'rabbi_ysahel',
+                url: 'https://github.com/user-nermine/DevOps_Project.git']])
+            }
+        }
 
         stage('Compiler le projet') {
             steps {
@@ -71,6 +79,7 @@ pipeline {
         }
     }
 }
+
 
 
 
