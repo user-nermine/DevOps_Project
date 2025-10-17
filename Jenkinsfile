@@ -6,7 +6,7 @@ pipeline {
         IMAGE_TAG = 'latest'
         PROJECT_NAME = 'demo-project'
         SONAR_HOST_URL = 'http://192.168.33.10:9000/'
-        SONAR_AUTH_TOKEN = credentials('sonarqube') // token stored in Jenkins credentials
+        SONAR_AUTH_TOKEN = credentials('sonarqube') // token stored in Jenkins  credentials
     }
 
     tools {
@@ -101,6 +101,7 @@ pipeline {
         }
     }
 }
+
 
 
 
