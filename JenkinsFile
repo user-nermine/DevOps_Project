@@ -1,1 +1,30 @@
+pipeline {
+    agent any
 
+    tools {
+        jdk 'JDK17'
+        maven 'Maven3'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'Wiem', url: 'https://github.com/user-nermine/DevOps_Project.git'
+            }
+        }
+
+        stage('Build') {
+    steps {
+            bat "mvn clean install -DskipTests=false"
+    }
+}
+stage('Debug') {
+    steps {
+        bat "dir"
+    }
+}
+
+
+
+}
+}
