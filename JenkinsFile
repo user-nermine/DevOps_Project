@@ -15,12 +15,12 @@ pipeline {
 
         stage('Build') {
     steps {
-            bat "mvn clean install -DskipTests=false"
+            sh "mvn clean install -DskipTests=false"
     }
 }
 stage('Debug') {
     steps {
-        bat "dir"
+        sh "dir"
     }
 }
 
