@@ -13,7 +13,7 @@ public class Main extends Application {
     public void start(Stage primaryStage) throws Exception {
         DataBase.initTables();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/user.fxml"));
-        Scene scene = new Scene(loader.load(), 600, 400);
+        Scene scene = new Scene(loader.load(), 50, 400);
         primaryStage.setTitle("Gestion Utilisateurs");
         primaryStage.setScene(scene);
         primaryStage.show();
