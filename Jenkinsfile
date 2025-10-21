@@ -1,53 +1,54 @@
-
 pipeline {
-    agent any  // Utilise un agent Jenkins disponible
+    agent any
+
+    tools {
+        maven 'maven'
+    }
 
     environment {
-        // Variables d'environnement si besoin
-        PROJECT_NAME = 'project'
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_TOKEN = credentials('sonarqube-token') // nom du secret Jenkins
     }
 
     stages {
         stage('Cloner le code') {
             steps {
-                git url: 'https://github.com/user-nermine/DevOps_Project.git'
+                git url: 'https://github.com/MaramKaouech/DevOps_Project.git'
             }
         }
 
         stage('Compiler le projet') {
             steps {
-                echo 'Compilation avec Maven...'
-                sh 'mvn clean'
+                sh 'mvn clean compile'
             }
         }
 
         stage('Tests unitaires') {
             steps {
-                echo 'Lancement des tests...'
                 sh 'mvn test'
             }
         }
 
-        stage('Analyse statique (optionnel)') {
+        stage('Analyse SonarQube') {
             steps {
-                echo 'Analyse statique (ex: Checkstyle, PMD, SonarQube)'
-                // Exemple : sh 'mvn checkstyle:check'
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                    mvn sonar:sonar \
+                      -Dsonar.projectKey=DevOps_Project \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.login=$SONAR_TOKEN
+                    """
+                }
             }
         }
-
-        
     }
 
     post {
         success {
-            echo 'Pipeline terminé avec succès ! 🎉'
+            echo '✅ Pipeline terminé avec succès !'
         }
         failure {
-            echo 'Le pipeline a échoué ❌'
-        }
-        always {
-            echo 'Fin du pipeline (success ou échec)'
+            echo '❌ Le pipeline a échoué.'
         }
     }
 }
-
