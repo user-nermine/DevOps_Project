@@ -2,8 +2,13 @@ pipeline {
     agent any
 
     tools {
-        // Optionnel : spécifier Maven si configuré dans Jenkins
-        maven 'M3'
+        maven 'M3'  // Assurez-vous que Maven est configuré dans "Global Tool Configuration"
+    }
+
+    environment {
+        // Ces variables ne sont plus nécessaires avec withSonarQubeEnv
+        // SONAR_HOST_URL = 'http://host.docker.internal:9001'
+        // SONAR_AUTH_TOKEN = credentials('sonarqube-token')
     }
 
     stages {
@@ -27,7 +32,7 @@ pipeline {
 
         stage('Analyse SonarQube') {
             steps {
-                withSonarQubeEnv('sonar-server') {
+                withSonarQubeEnv('sonar-server') {  // ← MUST MATCH Jenkins config
                     sh 'mvn sonar:sonar -Dsonar.projectKey=sample_project'
                 }
             }
@@ -35,16 +40,13 @@ pipeline {
     }
 
     post {
-        success { 
-            echo 'Pipeline terminé avec succès ! 🎉' 
-        }
-        failure { 
-            echo 'Le pipeline a échoué ❌' 
-        }
-        // Ajoutez ceci pour le statut SonarQube
         always {
+            // Ceci active l'affichage du statut Quality Gate
             script {
-                // Ceci active l'affichage du statut Quality Gate
+                def qg = waitForQualityGate()
+                if (qg.status != 'OK') {
+                    error "Quality Gate failed: ${qg.status}"
+                }
             }
         }
     }
