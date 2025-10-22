@@ -12,13 +12,6 @@ pipeline {
   }
 
   stages {
-    stage('Checkout Maram Branch') {
-      steps {
-        echo '📦 Checkout branche maram...'
-        git branch: 'maram', url: 'https://github.com/user-nermine/DevOps_Project.git'
-      }
-    }
-
     stage('Build') {
       steps {
         echo '🔨 Compilation et tests...'
