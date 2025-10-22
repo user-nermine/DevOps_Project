@@ -5,6 +5,8 @@ pipeline {
         SONAR_PROJECT_KEY = 'DevOps-Project-Maram'
         SONAR_PROJECT_NAME = 'DevOps Project Maram'
         SONAR_HOST_URL = 'http://host.docker.internal:9000'
+        // Utilisez le token que vous venez de créer
+        SONAR_TOKEN = 'sqa_8b1c7d3e5f6a9b2c4d8e7f6a5b3c9d8e2f4a7b6c5d8e9f0a1b2c3d4e5f6a7b8c9'
     }
     
     stages {
@@ -26,7 +28,6 @@ pipeline {
                         unzip -q -o sonar-scanner.zip
                         export PATH=$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH
                         echo "✅ SonarScanner installe"
-                        sonar-scanner --version
                     '''
                 }
             }
@@ -73,7 +74,7 @@ EOF
         
         stage('SonarQube Analysis') {
             steps {
-                echo '🚀 ANALYSE SONARQUBE REELLE...'
+                echo '🚀 ANALYSE SONARQUBE REELLE AVEC TOKEN...'
                 script {
                     sh """
                         echo "=== Configuration SonarQube ==="
@@ -104,42 +105,24 @@ EOF
                             echo "✅ SonarQube est UP et accessible"
                         else
                             echo "❌ SonarQube non accessible"
-                            echo "💡 Demarrez SonarQube: docker run -d -p 9000:9000 sonarqube"
                             exit 1
                         fi
                         
-                        # Verifier le projet - version simplifiee
-                        echo "🔎 Verification du projet dans SonarQube..."
-                        if curl -s "${SONAR_HOST_URL}/api/projects/search" | grep -q "${SONAR_PROJECT_KEY}"; then
-                            echo "✅ Projet existe deja dans SonarQube"
-                        else
-                            echo "⚠️ Projet non trouve - SonarScanner le creera automatiquement"
-                        fi
-                        
-                        # Afficher la structure pour debug
-                        echo "=== Structure des fichiers ==="
-                        echo "Sources Java:"
-                        find . -name "*.java" | head -15
-                        echo "Classes compilees:"
-                        ls -la target/classes/ 2>/dev/null || echo "Aucune classe compilee"
-                        echo "Rapports de test:"
-                        ls -la target/surefire-reports/
-                        
-                        # Lancer l analyse SonarQube - CREATION AUTOMATIQUE DU PROJET
-                        echo "🚀 LANCEMENT DE L ANALYSE SONARQUBE..."
-                        echo "📋 SonarScanner va creer le projet automatiquement si necessaire"
+                        # Lancer l analyse SonarQube AVEC TOKEN
+                        echo "🚀 LANCEMENT DE L ANALYSE SONARQUBE AVEC TOKEN..."
                         
                         sonar-scanner \
                             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                             -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_TOKEN} \
                             -Dsonar.sources=src/main/java,src,app-project/src,my-sonar-project/src,jenkins-auto-project/src \
                             -Dsonar.java.binaries=target/classes \
                             -Dsonar.junit.reportsPath=target/surefire-reports \
                             -Dsonar.sourceEncoding=UTF-8 \
                             -Dsonar.scm.provider=git
                         
-                        echo "✅ ANALYSE SONARQUBE TERMINEE"
+                        echo "✅ ANALYSE SONARQUBE TERMINEE AVEC SUCCES!"
                         echo "📊 Rapport disponible sur: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
                     '''
                 }
@@ -152,25 +135,19 @@ EOF
                 script {
                     sh '''
                         echo "🕐 Attente du traitement par SonarQube..."
-                        sleep 20
+                        sleep 30
                         
                         echo "🔍 Verification de l analyse..."
                         export PATH=$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH
                         
-                        # Verifier que le projet existe maintenant
+                        # Verifier que le projet existe maintenant avec authentification
                         echo "📋 Verification du projet apres analyse..."
-                        if curl -s "${SONAR_HOST_URL}/api/projects/search" | grep -q "${SONAR_PROJECT_KEY}"; then
-                            echo "✅ Projet maintenant present dans SonarQube!"
+                        if curl -s -u "${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/projects/search?projects=${SONAR_PROJECT_KEY}" | grep -q "${SONAR_PROJECT_KEY}"; then
+                            echo "🎉 SUCCES: Projet maintenant present dans SonarQube!"
                             
-                            # Essayer de recuperer les metriques
-                            echo "📈 Tentative de recuperation des metriques..."
-                            METRICS_RESPONSE=$(curl -s "${SONAR_HOST_URL}/api/measures/component?component=${SONAR_PROJECT_KEY}&metricKeys=ncloc,coverage,violations" 2>/dev/null || echo "metrics_unavailable")
-                            
-                            if echo "$METRICS_RESPONSE" | grep -q "metrics_unavailable"; then
-                                echo "⚠️ Metriques pas encore disponibles - attendez 1-2 minutes"
-                            else
-                                echo "✅ Metriques disponibles!"
-                            fi
+                            # Recuperer les metriques de base
+                            echo "📈 Recuperation des metriques..."
+                            curl -s -u "${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/measures/component?component=${SONAR_PROJECT_KEY}&metricKeys=ncloc,violations,bugs,code_smells" | grep -o '"metric":"[^"]*","value":"[^"]*"' | head -10
                             
                         else
                             echo "❌ Projet toujours absent - probleme d analyse"
@@ -181,10 +158,6 @@ EOF
                         echo "📊 Dashboard: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
                         echo "🔍 Overview: ${SONAR_HOST_URL}/project/overview?id=${SONAR_PROJECT_KEY}"
                         echo "📈 Measures: ${SONAR_HOST_URL}/measures/overview?id=${SONAR_PROJECT_KEY}"
-                        echo " "
-                        echo "💡 CONSEIL:"
-                        echo "   Les analyses peuvent prendre 1-2 minutes pour apparaitre"
-                        echo "   Rafraichissez la page SonarQube dans votre navigateur"
                         echo " "
                     '''
                 }
@@ -207,19 +180,14 @@ EOF
                         echo "   🔑 Project Key: ${SONAR_PROJECT_KEY}"
                         echo "   📝 Project Name: ${SONAR_PROJECT_NAME}"
                         echo "   🌐 SonarQube URL: ${SONAR_HOST_URL}"
-                        echo "   📁 Sources analysees: Tous les fichiers Java du projet"
+                        echo "   📁 Sources analysees: Tous les fichiers Java"
                         echo "   🧪 Tests: 8 tests simules"
                         echo " "
                         echo "🔗 ACCES RAPIDE:"
-                        echo "   📊 Dashboard Principal: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
-                        echo "   📋 Vue d ensemble: ${SONAR_HOST_URL}/project/overview?id=${SONAR_PROJECT_KEY}"
-                        echo "   📈 Metriques: ${SONAR_HOST_URL}/measures/overview?id=${SONAR_PROJECT_KEY}"
+                        echo "   📊 Dashboard: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+                        echo "   📋 Overview: ${SONAR_HOST_URL}/project/overview?id=${SONAR_PROJECT_KEY}"
                         echo " "
-                        echo "⏱️  DELAIS:"
-                        echo "   L analyse peut prendre 1-2 minutes pour etre visible"
-                        echo "   Rafraichissez la page SonarQube dans votre navigateur"
-                        echo " "
-                        echo "🎊 FELICITATIONS - VOTRE CODE EST MAINTENANT ANALYSE !"
+                        echo "🎊 FELICITATIONS - ANALYSE REUSSIE !"
                         echo " "
                     """
                 }
@@ -233,11 +201,11 @@ EOF
             archiveArtifacts artifacts: 'target/*.jar, target/surefire-reports/*.xml, sonar-project.properties', fingerprint: true
         }
         success {
-            echo "✅ PIPELINE REUSSI - Analyse SonarQube envoyee!"
-            echo "🔍 Verifiez dans 1-2 minutes: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+            echo "✅ PIPELINE REUSSI - Analyse SonarQube complete!"
+            echo "🔍 Verifiez: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
         }
         failure {
-            echo "❌ Pipeline echoue - Consultez les logs"
+            echo "❌ Pipeline echoue - Probleme d authentification SonarQube"
         }
     }
 }
