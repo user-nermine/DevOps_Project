@@ -8,14 +8,14 @@ pipeline {
   environment {
     SONAR_SERVER_NAME = 'SonarQube'
     SONAR_TOKEN_ID = 'sonar-token'
-    PROJECT_KEY = 'DevOps_Project_Maram'    // 🔥 CHANGEZ POUR ÊTRE UNIQUE
+    PROJECT_KEY = 'DevOps_Project_Maram'
   }
 
   stages {
     stage('Checkout Maram Branch') {
       steps {
         echo '📦 Checkout branche maram...'
-        git branch: 'maram', url: 'https://github.com/user-nermine/DevOps_Project.git'  // 🔥 AJOUTEZ branch: 'maram'
+        git branch: 'maram', url: 'https://github.com/user-nermine/DevOps_Project.git'
       }
     }
 
@@ -51,14 +51,14 @@ pipeline {
   }
 
   post {
-    success { 
+    success {
       echo '✅ Pipeline maram réussi! Vérifiez SonarQube: http://localhost:9001' 
     }
-    failure { 
-      echo '❌ Pipeline maram échoué' 
+    failure {
+      echo '❌ Pipeline maram échoué'
     }
-    always { 
-      echo '🏁 Fin du pipeline maram' 
+    always {
+      echo '🏁 Fin du pipeline maram'
     }
   }
 }
