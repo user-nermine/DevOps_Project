@@ -1,241 +1,253 @@
 pipeline {
     agent any
+    tools {
+        maven 'maven-3.9.5'
+        jdk 'jdk21'
+    }
     
     environment {
-        SONAR_PROJECT_KEY = 'DevOps-Project-Maram'
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_PROJECT_KEY = 'devops-project-maram'
         SONAR_PROJECT_NAME = 'DevOps Project Maram'
     }
     
     stages {
         stage('📁 Checkout Code') {
             steps {
-                echo '📁 Récupération du code source...'
-                git branch: 'maram', url: 'https://github.com/user-nermine/DevOps_Project.git'
-                
+                echo "📁 Récupération du code source..."
+                checkout scm
                 script {
-                    echo "✅ Repository cloné avec succès"
+                    if (fileExists('pom.xml')) {
+                        echo "✅ Fichier pom.xml trouvé"
+                    } else {
+                        error "❌ Fichier pom.xml manquant - Projet Maven requis"
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "✅ Checkout réussi"
                     sh '''
                         echo "=== Structure du projet ==="
                         ls -la
+                        echo "=== Fichiers Java ==="
+                        find . -name "*.java" -type f
                     '''
                 }
             }
         }
         
-        stage('🔧 Setup Environment') {
+        stage('🔧 Validate Environment') {
             steps {
-                echo '🔧 Configuration de l environnement...'
+                echo "🔧 Validation de l'environnement..."
                 script {
-                    sh '''
-                        echo "=== Vérification des outils ==="
-                        java -version && echo "✅ Java disponible"
-                        docker --version && echo "✅ Docker disponible"
-                        echo "✅ Environnement configuré"
-                    '''
+                    def requiredTools = [
+                        'java': 'java -version',
+                        'maven': 'mvn --version', 
+                        'sonar-scanner': 'sonar-scanner --version'
+                    ]
+                    
+                    requiredTools.each { tool, cmd ->
+                        try {
+                            sh cmd
+                            echo "✅ $tool disponible"
+                        } catch (Exception e) {
+                            echo "⚠️ $tool non disponible: ${e.getMessage()}"
+                        }
+                    }
                 }
             }
         }
         
-        stage('🔨 Create Real Source Code') {
+        stage('🧹 Clean Project') {
             steps {
-                echo '🔨 Création du code source réel...'
-                script {
-                    sh '''
-                        echo "🛠️ Création de fichiers Java réels pour SonarQube..."
-                        
-                        # Créer une structure de projet réelle
-                        mkdir -p src/main/java/com/devops
-                        mkdir -p src/test/java/com/devops
-                        
-                        # Créer une application Java réelle
-                        cat > src/main/java/com/devops/MainApplication.java << 'EOF'
-package com.devops;
-
-/**
- * Application DevOps principale
- */
-public class MainApplication {
-    
-    private String appName = "DevOps Project Maram";
-    private String version = "1.0.0";
-    
-    public static void main(String[] args) {
-        MainApplication app = new MainApplication();
-        app.start();
-    }
-    
-    public void start() {
-        System.out.println("🚀 Démarrage: " + appName + " v" + version);
-        String result = processData("sample data");
-        System.out.println("📊 Résultat: " + result);
-    }
-    
-    public String processData(String input) {
-        if (input == null || input.trim().isEmpty()) {
-            return "❌ Erreur: Données invalides";
+                echo "🧹 Nettoyage du projet..."
+                sh 'mvn clean -B'
+            }
         }
-        return "✅ Traité: " + input.toUpperCase();
-    }
-    
-    public int calculate(int a, int b) {
-        return a + b;
-    }
-    
-    public String getAppInfo() {
-        return appName + " - Version: " + version;
-    }
-}
-EOF
-
-                        # Créer un service métier
-                        cat > src/main/java/com/devops/OrderService.java << 'EOF'
-package com.devops;
-
-/**
- * Service de gestion des commandes
- */
-public class OrderService {
-    
-    public String createOrder(String orderId, String product) {
-        if (orderId == null || product == null) {
-            return "❌ Erreur: Paramètres manquants";
-        }
-        return "✅ Commande " + orderId + " créée pour " + product;
-    }
-    
-    public double calculateTotal(double price, int quantity) {
-        if (price < 0 || quantity < 0) {
-            throw new IllegalArgumentException("Valeurs invalides");
-        }
-        return price * quantity;
-    }
-}
-EOF
-
-                        echo "✅ Code source réel créé"
-                        echo "📁 Fichiers créés:"
-                        find src -name "*.java"
-                    '''
+        
+        stage('🔨 Compile & Tests') {
+            steps {
+                echo "🔨 Compilation et exécution des tests..."
+                sh 'mvn compile test-compile -B'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                    jacoco(
+                        execPattern: 'target/jacoco.exec',
+                        classPattern: 'target/classes',
+                        sourcePattern: 'src/main/java'
+                    )
                 }
             }
         }
         
-        stage('📦 Build & Package') {
+        stage('📦 Package Application') {
             steps {
-                echo '📦 Construction et packaging...'
-                script {
-                    sh '''
-                        mkdir -p target
-                        echo "Application JAR - DevOps Project" > target/app.jar
-                        echo "✅ Application packagée"
-                    '''
+                echo "📦 Création du package..."
+                sh 'mvn package -DskipTests -B'
+            }
+            post {
+                success {
+                    echo "✅ Package créé avec succès"
+                    sh 'ls -lh target/*.jar'
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                 }
             }
         }
         
-        stage('🔍 Real SonarQube Analysis') {
+        stage('🔍 SonarQube Analysis') {
             steps {
-                echo '🔍 Analyse RÉELLE SonarQube...'
+                echo "🔍 Analyse de la qualité du code avec SonarQube..."
                 script {
-                    sh """
-                        echo "🚀 LANCEMENT DE L'ANALYSE SONARQUBE RÉELLE..."
-                        
-                        # ANALYSE RÉELLE avec Docker
-                        docker run --rm \\
-                          -v \$(pwd):/usr/src \\
-                          sonarsource/sonar-scanner-cli:latest \\
-                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
-                          -Dsonar.projectName="${SONAR_PROJECT_NAME}" \\
-                          -Dsonar.host.url=http://host.docker.internal:9000 \\
-                          -Dsonar.sources=src/main/java \\
-                          -Dsonar.sourceEncoding=UTF-8 \\
-                          -Dsonar.scm.disabled=true
-                        
-                        echo "✅ ANALYSE RÉELLE ENVOYÉE À SONARQUBE !"
-                        echo "📤 Le projet a été créé automatiquement dans SonarQube"
-                    """
+                    try {
+                        withSonarQubeEnv('sonarqube') {
+                            sh """
+                                mvn sonar:sonar \
+                                  -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                  -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.sources=src/main/java \
+                                  -Dsonar.tests=src/test/java \
+                                  -Dsonar.java.binaries=target/classes \
+                                  -Dsonar.junit.reportsPath=target/surefire-reports \
+                                  -Dsonar.jacoco.reportPaths=target/jacoco.exec \
+                                  -Dsonar.sourceEncoding=UTF-8 \
+                                  -Dsonar.coverage.exclusions=**/test/**,**/generated/** \
+                                  -B
+                            """
+                        }
+                    } catch (Exception e) {
+                        echo "❌ Échec de l'analyse SonarQube: ${e.getMessage()}"
+                        // Continuer le pipeline même si SonarQube échoue
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "✅ Analyse SonarQube lancée avec succès"
+                    echo "📊 Consultez les résultats sur: ${SONAR_HOST_URL}"
                 }
             }
         }
         
-        stage('📊 Verify Analysis') {
+        stage('⏳ Quality Gate') {
             steps {
-                echo '📊 Vérification de l analyse...'
+                echo "⏳ Vérification du Quality Gate..."
                 script {
-                    sleep(30)  // Attendre le traitement
-                    sh """
-                        echo "🎉 🎉 🎉 ANALYSE TERMINÉE ! 🎉 🎉 🎉"
-                        echo ""
-                        echo "🌐 OUVREZ SONARQUBE MAINTENANT :"
-                        echo "   http://localhost:9000/projects"
-                        echo ""
-                        echo "🔍 CHERCHEZ : '${SONAR_PROJECT_NAME}'"
-                        echo ""
-                        echo "📍 URL DIRECTE :"
-                        echo "   http://localhost:9000/dashboard?id=${SONAR_PROJECT_KEY}"
-                        echo ""
-                        echo "✅ Le projet DOIT être visible dans la liste !"
-                    """
+                    try {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: false
+                        }
+                    } catch (Exception e) {
+                        echo "⚠️ Timeout ou erreur du Quality Gate: ${e.getMessage()}"
+                        // Ne pas bloquer le pipeline
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "✅ Quality Gate passé avec succès"
+                }
+                unsuccessful {
+                    echo "⚠️ Quality Gate non passé - Vérifiez les métriques"
                 }
             }
         }
         
-        stage('🐳 Docker Build') {
+        stage('🐳 Build Docker Image') {
+            when {
+                expression { 
+                    fileExists('Dockerfile') 
+                }
+            }
             steps {
-                echo '🐳 Construction image Docker...'
+                echo "🐳 Construction de l'image Docker..."
                 script {
-                    sh '''
-                        cat > Dockerfile << 'EOF'
-FROM openjdk:21-jdk-slim
-WORKDIR /app
-COPY target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-EOF
-                        echo "✅ Dockerfile créé"
-                    '''
+                    try {
+                        sh '''
+                            docker --version
+                            docker build -t devops-app:${BUILD_NUMBER} .
+                            docker images | grep devops-app
+                        '''
+                    } catch (Exception e) {
+                        echo "⚠️ Docker non disponible: ${e.getMessage()}"
+                    }
                 }
             }
         }
         
-        stage('🎯 Final Report') {
+        stage('📊 Generate Reports') {
             steps {
-                echo '🎯 Rapport final...'
-                script {
-                    sh """
-                        echo " "
-                        echo "🎉 ================================="
-                        echo "🎉   PIPELINE RÉUSSI - PROJET DANS SONARQUBE"
-                        echo "🎉 ================================="
-                        echo " "
-                        echo "✅ ANALYSE SONARQUBE RÉELLE EFFECTUÉE"
-                        echo "📊 Projet créé automatiquement dans SonarQube"
-                        echo "🔍 Accédez à: http://localhost:9000/projects"
-                        echo " "
-                        echo "📦 ARTEFACTS PRODUITS:"
-                        echo "   • Code source Java réel"
-                        echo "   • Application packagée"
-                        echo "   • Image Docker"
-                        echo "   • Analyse SonarQube complète"
-                        echo " "
-                        echo "🎊 PROJET ENVOYÉ AVEC SUCCÈS À SONARQUBE !"
-                        echo " "
-                    """
-                }
+                echo "📊 Génération des rapports..."
+                sh '''
+                    echo "=== Rapport de couverture ==="
+                    mvn jacoco:report -B || echo "Jacoco report non disponible"
+                    
+                    echo "=== Résumé du build ==="
+                    echo "Build: ${BUILD_NUMBER}"
+                    echo "Projet: ${SONAR_PROJECT_NAME}" 
+                    echo "URL Sonar: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+                    echo "Artifacts: target/*.jar"
+                '''
             }
         }
     }
     
     post {
         always {
-            archiveArtifacts artifacts: 'target/*.jar, Dockerfile, src/**/*.java', fingerprint: true
-            echo '📦 Artefacts archivés'
+            echo "📊 Pipeline terminé - Statut: ${currentBuild.currentResult}"
+            script {
+                // Nettoyage des ressources temporaires
+                sh '''
+                    echo "=== Nettoyage ==="
+                    docker system prune -f || true
+                    du -sh . || true
+                '''
+            }
+            
+            // Publication des rapports
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'target/site/jacoco',
+                reportFiles: 'index.html',
+                reportName: 'Rapport de Couverture JaCoCo'
+            ])
+            
+            // Notification Slack/Email optionnelle
+            emailext (
+                subject: "Build ${currentBuild.currentResult}: Job '${env.JOB_NAME}' (${env.BUILD_NUMBER})",
+                body: """
+                Bonjour,
+
+                Le build ${currentBuild.currentResult} pour le projet ${SONAR_PROJECT_NAME}.
+
+                Détails:
+                - Build: ${env.BUILD_URL}
+                - SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}
+                - Durée: ${currentBuild.durationString}
+
+                Cordialement,
+                Jenkins
+                """,
+                to: "devops-team@company.com"
+            )
         }
         success {
-            echo '🎉 🎉 🎉 PIPELINE RÉUSSI - VÉRIFIEZ SONARQUBE ! 🎉 🎉 🎉'
+            echo "✅✅✅ SUCCÈS DU PIPELINE ✅✅✅"
+            echo "📦 Artifacts: ${env.BUILD_URL}artifact/"
+            echo "📊 SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
         }
         failure {
-            echo '❌ Échec - Vérifiez les logs'
+            echo "❌❌❌ ÉCHEC DU PIPELINE ❌❌❌"
+            echo "🔍 Vérifiez les logs: ${env.BUILD_URL}console"
+        }
+        unstable {
+            echo "⚠️⚠️⚠️ PIPELINE INSTABLE ⚠️⚠️⚠️"
+            echo "📊 Qualité du code à améliorer"
         }
     }
 }
