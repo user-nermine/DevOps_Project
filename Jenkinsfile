@@ -14,15 +14,15 @@ pipeline {
       steps {
         echo '📁 Création du projet JavaFX complet...'
         sh '''
-          # Nettoyage des fichiers inutiles
-          rm -f *.dll
+          # Nettoyage
+          rm -rf src target
           
-          # Création de la structure
+          # Création structure
           mkdir -p src/main/java/tn/esprit
           mkdir -p src/test/java/tn/esprit
           mkdir -p src/main/resources
 
-          # Création du pom.xml
+          # Création pom.xml
           cat > pom.xml << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -37,7 +37,6 @@ pipeline {
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <sonar.host.url>http://localhost:9001</sonar.host.url>
     </properties>
     <dependencies>
         <dependency>
@@ -172,8 +171,6 @@ public class OrderServiceTest {
 EOF
 
           echo "✅ Projet créé avec succès!"
-          ls -la
-          find . -name "*.java" -type f
         '''
       }
     }
@@ -198,7 +195,7 @@ EOF
             sh """
             mvn -B sonar:sonar \
               -Dsonar.projectKey=${env.PROJECT_KEY} \
-              -Dsonar.host.url=http://localhost:9001 \
+              -Dsonar.host.url=http://host.docker.internal:9001 \
               -Dsonar.login=${SONAR_TOKEN}
             """
           }
