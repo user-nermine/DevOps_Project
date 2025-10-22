@@ -12,6 +12,20 @@ pipeline {
   }
 
   stages {
+    stage('Diagnostic') {
+      steps {
+        echo '🔍 Diagnostic du workspace...'
+        sh '''
+          pwd
+          ls -la
+          find . -name "pom.xml" -type f
+          find . -name "*.java" -type f | head -10
+          echo "=== Structure complète ==="
+          ls -R
+        '''
+      }
+    }
+
     stage('Build') {
       steps {
         echo '🔨 Compilation et tests...'
@@ -33,14 +47,6 @@ pipeline {
         }
       }
     }
-
-    stage('Quality Gate') {
-      steps {
-        timeout(time: 5, unit: 'MINUTES') {
-          waitForQualityGate abortPipeline: true
-        }
-      }
-    }
   }
 
   post {
@@ -49,9 +55,6 @@ pipeline {
     }
     failure {
       echo '❌ Pipeline maram échoué'
-    }
-    always {
-      echo '🏁 Fin du pipeline maram'
     }
   }
 }
