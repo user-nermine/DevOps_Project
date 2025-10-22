@@ -4,7 +4,7 @@ pipeline {
     environment {
         SONAR_PROJECT_KEY = 'DevOps-Project-Maram'
         SONAR_PROJECT_NAME = 'DevOps Project Maram'
-        SONAR_HOST_URL = 'http://host.docker.internal:9000'  // Correction importante
+        SONAR_HOST_URL = 'http://host.docker.internal:9000'
     }
     
     stages {
@@ -116,9 +116,6 @@ EOF
                                 sonar-scanner --version
                             else
                                 echo "ERREUR: SonarScanner non disponible"
-                                echo "PATH actuel: $PATH"
-                                echo "Contenu du dossier:"
-                                ls -la sonar-scanner-5.0.1.3006-linux/bin/
                                 exit 1
                             fi
                             
@@ -149,21 +146,16 @@ EOF
                             
                             if [ "$SONAR_ACCESSIBLE" = "false" ]; then
                                 echo "❌ ERREUR CRITIQUE: SonarQube non accessible"
-                                echo "Verifications a effectuer:"
-                                echo "1. SonarQube est-il demarre sur votre machine hote?"
-                                echo "2. Le port 9000 est-il accessible?"
-                                echo "3. Essayez: docker ps (pour verifier les conteneurs)"
-                                echo "4. Essayez: curl http://localhost:9000 (sur la machine hote)"
                                 exit 1
                             fi
                             
-                            # Executer l analyse
+                            # Executer l analyse avec les parametres correctement echappes
                             echo "Execution de l analyse SonarQube..."
                             sonar-scanner \\
                                 -Dsonar.projectKey=''' + "${SONAR_PROJECT_KEY}" + ''' \\
-                                -Dsonar.projectName=''' + "${SONAR_PROJECT_NAME}" + ''' \\
+                                -Dsonar.projectName="DevOps Project Maram" \\
                                 -Dsonar.host.url=''' + "${SONAR_HOST_URL}" + ''' \\
-                                -Dsonar.token=''' + "${SONAR_TOKEN}" + ''' \\
+                                -Dsonar.login=''' + "${SONAR_TOKEN}" + ''' \\
                                 -Dsonar.sources=src,app-project,my-sonar-project,jenkins-auto-project \\
                                 -Dsonar.java.binaries=target/classes \\
                                 -Dsonar.junit.reportsPath=target/surefire-reports \\
