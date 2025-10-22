@@ -3,10 +3,12 @@ pipeline {
     
     tools {
         maven 'maven'
+        jdk 'jdk17'  // ASSUREZ-VOUS D'AVOIR JDK17 CONFIGURÉ DANS JENKINS
     }
     
     environment {
-        PROJECT_KEY = 'DevOps_Project_Jenkins'
+        PROJECT_KEY = 'Order_JavaFX_Project'
+        MODULE_PATH = '--module-path /chemin/vers/javafx-sdk-21.0.2/lib --add-modules javafx.controls,javafx.fxml'
     }
     
     stages {
@@ -19,36 +21,38 @@ pipeline {
         
         stage('Build & Compile') {
             steps {
-                echo '🔨 Compilation du projet...'
+                echo '🔨 Compilation JavaFX...'
                 sh 'mvn -B clean compile'
             }
         }
         
         stage('Tests') {
             steps {
-                echo '🧪 Exécution des tests...'
+                echo '🧪 Exécution des tests (si disponibles)...'
                 script {
-                    // Exécute les tests mais ne échoue pas si pas de tests
-                    sh 'mvn -B test || echo "Aucun test exécuté ou erreur de test"'
+                    // Essaye d'exécuter les tests, mais continue même si échec
+                    sh '''
+                    mvn -B test -DskipTests=false || \
+                    echo "Aucun test ou erreur de test - continuation du pipeline"
+                    '''
                 }
             }
             post {
                 always {
-                    // Cherche les rapports de test, mais ne échoue pas si pas trouvés
-                    script {
-                        try {
-                            junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                        } catch (e) {
-                            echo "Aucun rapport de test trouvé: ${e.message}"
-                        }
-                    }
+                    // Publie les rapports JUnit si disponibles
+                    junit allowEmptyResults: true, 
+                          testResults: 'target/surefire-reports/*.xml, target/failsafe-reports/*.xml'
+                    
+                    // Affiche le contenu du dossier target pour debug
+                    sh 'ls -la target/ || true'
+                    sh 'find . -name "*.xml" -type f | head -5 || true'
                 }
             }
         }
         
         stage('Package') {
             steps {
-                echo '📦 Création du package...'
+                echo '📦 Création du JAR...'
                 sh 'mvn -B package -DskipTests'
             }
         }
@@ -57,25 +61,16 @@ pipeline {
             steps {
                 echo '🔍 Analyse SonarQube...'
                 script {
-                    try {
-                        withSonarQubeEnv('SonarQube') {
-                            sh """
-                            mvn -B sonar:sonar \
-                              -Dsonar.projectKey=${env.PROJECT_KEY} \
-                              -Dsonar.host.url=http://localhost:9001
-                            """
-                        }
-                    } catch (e) {
-                        echo "Erreur SonarQube: ${e.message}"
-                        // Fallback avec token direct
-                        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                            sh """
-                            mvn -B sonar:sonar \
-                              -Dsonar.projectKey=${env.PROJECT_KEY} \
-                              -Dsonar.host.url=http://localhost:9001 \
-                              -Dsonar.login=${SONAR_TOKEN}
-                            """
-                        }
+                    // Méthode avec credentials directe
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh """
+                        mvn -B sonar:sonar \
+                          -Dsonar.projectKey=${env.PROJECT_KEY} \
+                          -Dsonar.host.url=http://localhost:9001 \
+                          -Dsonar.login=${SONAR_TOKEN} \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                          -Dsonar.java.coveragePlugin=jacoco
+                        """
                     }
                 }
             }
@@ -85,15 +80,15 @@ pipeline {
     post {
         always {
             echo "🏁 Pipeline ${currentBuild.currentResult}"
-            // Liste les fichiers pour debug
-            sh 'find . -name "*.xml" -type f | head -10 || true'
-            sh 'ls -la target/ || true'
+            // Nettoyage
+            sh 'mvn -B clean || true'
         }
         success {
-            echo '✅ SUCCÈS!'
+            echo '✅ SUCCÈS! Projet JavaFX analysé avec SonarQube'
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
         failure {
-            echo '❌ ÉCHEC - Vérifiez les logs ci-dessus'
+            echo '❌ ÉCHEC - Vérifiez la configuration JavaFX et SonarQube'
         }
     }
 }
