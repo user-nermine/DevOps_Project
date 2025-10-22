@@ -104,13 +104,11 @@ EOF
                     
                     // Executer l'analyse SonarQube RELLE
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh """
+                        sh '''
                             echo "Lancement de l analyse SonarQube RELLE..."
                             
-                            # Configurer le PATH pour SonarScanner
-                            if [ -d "sonar-scanner-5.0.1.3006-linux" ]; then
-                                export PATH=$PWD/sonar-scanner-5.0.1.3006-linux/bin:\\$PATH
-                            fi
+                            # Reconfigurer le PATH pour cette session
+                            export PATH=''' + '"$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH"' + '''
                             
                             # Verifier que SonarScanner est disponible
                             if which sonar-scanner >/dev/null 2>&1; then
@@ -118,14 +116,17 @@ EOF
                                 sonar-scanner --version
                             else
                                 echo "ERREUR: SonarScanner non disponible"
+                                echo "PATH actuel: $PATH"
+                                echo "Contenu du dossier:"
+                                ls -la sonar-scanner-5.0.1.3006-linux/bin/
                                 exit 1
                             fi
                             
                             echo "Verification de la connexion a SonarQube..."
-                            if curl -s -f "${SONAR_HOST_URL}/api/system/status" > /dev/null; then
+                            if curl -s -f "''' + "${SONAR_HOST_URL}" + '''/api/system/status" > /dev/null; then
                                 echo "SonarQube accessible"
                             else
-                                echo "ERREUR: SonarQube non accessible a ${SONAR_HOST_URL}"
+                                echo "ERREUR: SonarQube non accessible a ''' + "${SONAR_HOST_URL}" + '''"
                                 echo "Verification de l URL et du demarrage de SonarQube"
                                 exit 1
                             fi
@@ -133,18 +134,18 @@ EOF
                             # Executer l analyse
                             echo "Execution de l analyse SonarQube..."
                             sonar-scanner \\
-                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
-                                -Dsonar.projectName='${SONAR_PROJECT_NAME}' \\
-                                -Dsonar.host.url=${SONAR_HOST_URL} \\
-                                -Dsonar.token=${SONAR_TOKEN} \\
+                                -Dsonar.projectKey=''' + "${SONAR_PROJECT_KEY}" + ''' \\
+                                -Dsonar.projectName=''' + "${SONAR_PROJECT_NAME}" + ''' \\
+                                -Dsonar.host.url=''' + "${SONAR_HOST_URL}" + ''' \\
+                                -Dsonar.token=''' + "${SONAR_TOKEN}" + ''' \\
                                 -Dsonar.sources=src,app-project,my-sonar-project,jenkins-auto-project \\
                                 -Dsonar.java.binaries=target/classes \\
                                 -Dsonar.junit.reportsPath=target/surefire-reports \\
                                 -Dsonar.sourceEncoding=UTF-8
                             
                             echo "Analyse SonarQube terminee avec succes"
-                            echo "Rapport disponible sur: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
-                        """
+                            echo "Rapport disponible sur: ''' + "${SONAR_HOST_URL}" + '''/dashboard?id=''' + "${SONAR_PROJECT_KEY}" + '''"
+                        '''
                     }
                 }
             }
@@ -155,19 +156,19 @@ EOF
                 echo 'Verification du Quality Gate...'
                 script {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh """
+                        sh '''
                             echo "Attente du traitement par SonarQube..."
                             sleep 25
                             
                             echo "Verification du Quality Gate..."
-                            if curl -s -u "\${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}" > /dev/null 2>&1; then
+                            if curl -s -u "''' + "${SONAR_TOKEN}" + '":' + ''' "''' + "${SONAR_HOST_URL}" + '''/api/qualitygates/project_status?projectKey=''' + "${SONAR_PROJECT_KEY}" + '''" > /dev/null 2>&1; then
                                 echo "QUALITY GATE: VERIFIE"
                             else
                                 echo "QUALITY GATE: NON VERIFIE (projet peut-etre en cours d analyse)"
                             fi
                             
-                            echo "Rapport SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
-                        """
+                            echo "Rapport SonarQube: ''' + "${SONAR_HOST_URL}" + '''/dashboard?id=''' + "${SONAR_PROJECT_KEY}" + '''"
+                        '''
                     }
                 }
             }
