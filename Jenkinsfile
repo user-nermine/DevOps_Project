@@ -1,7 +1,7 @@
 pipeline {
     agent any
     tools {
-        maven 'maven'  // Correspond à votre installation Maven configurée dans Jenkins
+        maven 'maven'
     }
     
     stages {
@@ -15,8 +15,6 @@ pipeline {
         stage('Create Complete Project') {
             steps {
                 echo "📁 Préparation du projet..."
-                // Éventuellement cloner le repository si nécessaire
-                // git 'url-du-repo'
             }
         }
         
@@ -27,13 +25,12 @@ pipeline {
             }
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml'  // Archive des résultats de tests
-                    // Vérification que la compilation a produit les artifacts
+                    junit 'target/surefire-reports/*.xml'
                     script {
                         if (fileExists('target')) {
-                            sh 'ls -la target/ || echo "Dossier target vide ou inexistant"'
+                            sh 'ls -la target/'
                         } else {
-                            echo "⚠️ Le dossier target n'existe pas après la compilation"
+                            echo "⚠️ Le dossier target n'existe pas"
                         }
                     }
                 }
@@ -48,10 +45,17 @@ pipeline {
             post {
                 success {
                     script {
-                        def jarFiles = findFiles(glob: 'target/*.jar')
-                        if (jarFiles.length > 0) {
-                            echo "✅ Fichiers JAR générés: ${jarFiles*.name}"
+                        // Méthode alternative à findFiles
+                        def jarExists = fileExists('target/Order-1.0-SNAPSHOT.jar')
+                        if (jarExists) {
+                            echo "✅ Fichier JAR généré: Order-1.0-SNAPSHOT.jar"
+                            sh 'ls -la target/*.jar'
                         } else {
+                            // Vérification d'autres noms possibles
+                            sh '''
+                                echo "🔍 Recherche des fichiers JAR..."
+                                ls -la target/ | grep ".jar" || echo "Aucun fichier JAR trouvé"
+                            '''
                             error "❌ Aucun fichier JAR trouvé dans target/"
                         }
                     }
@@ -61,15 +65,15 @@ pipeline {
         
         stage('SonarQube Analysis') {
             environment {
-                SONAR_HOST_URL = 'https://votre-sonar-server'
+                SONAR_HOST_URL = 'https://votre-sonar-server'  // À adapter
             }
             steps {
                 echo "🔍 Analyse SonarQube..."
                 withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN_SECURE')]) {
                     sh """
-                        mvn sonar:sonar \
-                          -Dsonar.projectKey=votre-project-key \
-                          -Dsonar.host.url=${SONAR_HOST_URL} \
+                        mvn sonar:sonar \\
+                          -Dsonar.projectKey=order-project \\
+                          -Dsonar.host.url=${SONAR_HOST_URL} \\
                           -Dsonar.login=${SONAR_TOKEN_SECURE}
                     """
                 }
@@ -80,7 +84,15 @@ pipeline {
     post {
         always {
             echo "📊 Pipeline terminé - Consultez les rapports ci-dessus"
-            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            // Archive uniquement si le JAR existe
+            script {
+                if (fileExists('target/Order-1.0-SNAPSHOT.jar')) {
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                    echo "📦 Artifacts archivés avec succès"
+                } else {
+                    echo "⚠️ Aucun artifact à archiver"
+                }
+            }
         }
         success {
             echo "✅ Pipeline exécuté avec succès!"
