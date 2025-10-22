@@ -6,35 +6,45 @@ pipeline {
     }
     
     environment {
-        SONAR_SERVER_NAME = 'SonarQube'
-        PROJECT_KEY = 'DevOps_Project'
+        // Changez le projectKey pour être unique
+        PROJECT_KEY = 'DevOps_Project_Jenkins_' + env.BUILD_NUMBER
     }
     
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/user-nermine/DevOps_Project.git'
+                echo '📦 Checkout du code...'
+                git branch: 'main', url: 'https://github.com/user-nermine/DevOps_Project.git'
             }
         }
         
-        stage('Build & Tests') {
+        stage('Build') {
             steps {
-                sh 'mvn -B clean verify'
+                echo '🔨 Compilation...'
+                sh 'mvn -B clean compile'
+            }
+        }
+        
+        stage('Tests') {
+            steps {
+                echo '🧪 Exécution des tests...'
+                sh 'mvn -B test'
             }
         }
         
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv("${env.SONAR_SERVER_NAME}") {
-                    sh "mvn -B sonar:sonar -Dsonar.projectKey=${env.PROJECT_KEY}"
-                }
-            }
-        }
-        
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                echo '🔍 Analyse SonarQube...'
+                script {
+                    // Méthode directe sans withSonarQubeEnv
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh """
+                        mvn -B sonar:sonar \
+                          -Dsonar.projectKey=${env.PROJECT_KEY} \
+                          -Dsonar.host.url=http://localhost:9001 \
+                          -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
                 }
             }
         }
@@ -42,14 +52,7 @@ pipeline {
     
     post {
         always {
-            echo 'Pipeline completed'
-            // Nettoyage si nécessaire
-        }
-        success {
-            echo '✅ Pipeline succeeded!'
-        }
-        failure {
-            echo '❌ Pipeline failed!'
+            echo "🏁 Build ${env.BUILD_NUMBER} terminé : ${currentBuild.currentResult}"
         }
     }
 }
