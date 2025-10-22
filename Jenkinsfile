@@ -15,7 +15,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "📁 Récupération du code..."
-                checkout scm
+                git branch: 'maram', url: 'https://github.com/user-nermine/DevOps_Project.git'
             }
         }
         
