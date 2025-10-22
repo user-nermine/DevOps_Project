@@ -1,99 +1,64 @@
 pipeline {
-    agent any
-    
-    tools {
-        maven 'maven'
-    }
-    
-    environment {
-        PROJECT_KEY = 'Order_JavaFX_Project'
-    }
-    
-    stages {
-        stage('Checkout') {
-            steps {
-                echo '📦 Checkout du code...'
-                git branch: 'main', url: 'https://github.com/user-nermine/DevOps_Project.git'
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                echo '🔨 Tentative de build...'
-                script {
-                    // Essaye de build, continue même si échec
-                    sh 'mvn -B clean compile || echo "Build échoué - peut-être pas de sources"'
-                }
-            }
-        }
-        
-        stage('Create Test Files') {
-            steps {
-                echo '📝 Création de fichiers de test si manquants...'
-                script {
-                    // Crée un test simple si le dossier n'existe pas
-                    sh '''
-                    if [ ! -d "src/test/java/tn/esprit" ]; then
-                        mkdir -p src/test/java/tn/esprit
-                        cat > src/test/java/tn/esprit/SimpleTest.java << EOF
-package tn.esprit;
+  agent any
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+  tools {
+    maven 'maven'
+  }
 
-public class SimpleTest {
-    @Test
-    public void testBasic() {
-        assertTrue(true, "Test basique");
+  environment {
+    SONAR_SERVER_NAME = 'SonarQube'
+    SONAR_TOKEN_ID = 'sonar-token'
+    PROJECT_KEY = 'DevOps_Project_Maram'    // 🔥 CHANGEZ POUR ÊTRE UNIQUE
+  }
+
+  stages {
+    stage('Checkout Maram Branch') {
+      steps {
+        echo '📦 Checkout branche maram...'
+        git branch: 'maram', url: 'https://github.com/user-nermine/DevOps_Project.git'  // 🔥 AJOUTEZ branch: 'maram'
+      }
     }
-}
-EOF
-                        echo "Fichier de test créé"
-                    else
-                        echo "Dossier test existe déjà"
-                    fi
-                    '''
-                }
-            }
-        }
-        
-        stage('Execute Tests') {
-            steps {
-                echo '🧪 Exécution des tests...'
-                script {
-                    sh 'mvn -B test || echo "Tests échoués ou manquants"'
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                }
-            }
-        }
-        
-        stage('SonarQube Analysis') {
-            steps {
-                echo '🔍 Analyse SonarQube...'
-                script {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh """
-                        mvn -B sonar:sonar \
-                          -Dsonar.projectKey=${env.PROJECT_KEY} \
-                          -Dsonar.host.url=http://localhost:9001 \
-                          -Dsonar.login=${SONAR_TOKEN}
-                        """
-                    }
-                }
-            }
-        }
+
+    stage('Build') {
+      steps {
+        echo '🔨 Compilation et tests...'
+        sh 'mvn -B clean verify'
+      }
     }
-    
-    post {
-        always {
-            echo "🏁 Pipeline ${currentBuild.currentResult}"
+
+    stage('SonarQube Analysis') {
+      steps {
+        script {
+          withCredentials([string(credentialsId: env.SONAR_TOKEN_ID, variable: 'SONAR_TOKEN')]) {
+            sh """
+            mvn -B sonar:sonar \
+              -Dsonar.projectKey=${env.PROJECT_KEY} \
+              -Dsonar.host.url=http://localhost:9001 \
+              -Dsonar.login=${SONAR_TOKEN}
+            """
+          }
         }
-        success {
-            echo '✅ Analyse SonarQube complétée!'
-        }
+      }
     }
+
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 5, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
+  }
+
+  post {
+    success { 
+      echo '✅ Pipeline maram réussi! Vérifiez SonarQube: http://localhost:9001' 
+    }
+    failure { 
+      echo '❌ Pipeline maram échoué' 
+    }
+    always { 
+      echo '🏁 Fin du pipeline maram' 
+    }
+  }
 }
