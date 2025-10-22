@@ -2,7 +2,8 @@ pipeline {
     agent any
     
     environment {
-        SONAR_HOST = 'localhost:9000'
+        // URL SPÉCIALE POUR DOCKER SUR WINDOWS
+        SONAR_HOST = 'host.docker.internal:9000'
     }
     
     stages {
@@ -13,108 +14,90 @@ pipeline {
             }
         }
         
-        stage('Create Windows Compatible Project') {
+        stage('Create Project Structure') {
             steps {
-                echo "🛠️ Création projet compatible Windows..."
-                bat '''
-                    @echo off
-                    echo Création de la structure du projet...
+                echo "🛠️ Création de la structure..."
+                sh '''
+                    # Créer une structure simple et propre
+                    rm -rf sonar-project
+                    mkdir -p sonar-project/src/main/java/com/devops
                     
-                    rmdir /s /q my-sonar-project 2>nul
-                    mkdir my-sonar-project
-                    mkdir my-sonar-project\\src
-                    mkdir my-sonar-project\\src\\main
-                    mkdir my-sonar-project\\src\\main\\java
-                    mkdir my-sonar-project\\src\\main\\java\\com
-                    mkdir my-sonar-project\\src\\main\\java\\com\\devops
-                    
-                    cd my-sonar-project
-                    
-                    echo Création des fichiers Java...
-                    
-                    echo package com.devops; > src\\main\\java\\com\\devops\\MainApp.java
-                    echo. >> src\\main\\java\\com\\devops\\MainApp.java
-                    echo public class MainApp { >> src\\main\\java\\com\\devops\\MainApp.java
-                    echo     public static void main(String[] args) { >> src\\main\\java\\com\\devops\\MainApp.java
-                    echo         System.out.println("Hello SonarQube from Jenkins Windows!"); >> src\\main\\java\\com\\devops\\MainApp.java
-                    echo         Calculator calc = new Calculator(); >> src\\main\\java\\com\\devops\\MainApp.java
-                    echo         System.out.println("5 + 3 = " + calc.add(5, 3)); >> src\\main\\java\\com\\devops\\MainApp.java
-                    echo     } >> src\\main\\java\\com\\devops\\MainApp.java
-                    echo } >> src\\main\\java\\com\\devops\\MainApp.java
-                    
-                    echo package com.devops; > src\\main\\java\\com\\devops\\Calculator.java
-                    echo. >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo public class Calculator { >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo     public int add(int a, int b) { >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo         return a + b; >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo     } >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo     >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo     public int multiply(int a, int b) { >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo         return a * b; >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo     } >> src\\main\\java\\com\\devops\\Calculator.java
-                    echo } >> src\\main\\java\\com\\devops\\Calculator.java
-                    
-                    echo Projet créé avec succès!
-                    dir src\\main\\java\\com\\devops\\
+                    # Fichier 1 - Simple et efficace
+                    cat > sonar-project/src/main/java/com/devops/Application.java << 'EOF'
+package com.devops;
+public class Application {
+    public static void main(String[] args) {
+        System.out.println("DevOps Application");
+    }
+    public String process(String input) {
+        return input != null ? input.toUpperCase() : "NULL";
+    }
+}
+EOF
+
+                    # Fichier 2 
+                    cat > sonar-project/src/main/java/com/devops/Calculator.java << 'EOF'
+package com.devops;
+public class Calculator {
+    public int add(int a, int b) { return a + b; }
+    public int multiply(int a, int b) { return a * b; }
+}
+EOF
+
+                    echo "✅ Structure créée"
+                    ls -la sonar-project/src/main/java/com/devops/
                 '''
             }
         }
         
-        stage('SonarQube Analysis - Windows Method') {
+        stage('SonarQube Scan - FIXED') {
             steps {
-                echo "🔍 Analyse SonarQube pour Windows..."
+                echo "🔍 Analyse SonarQube..."
                 script {
-                    bat '''
-                        @echo off
-                        echo Lancement de l analyse SonarQube...
-                        cd my-sonar-project
+                    sh """
+                        echo "🚀 Démarrage analyse..."
+                        cd sonar-project
                         
-                        echo Configuration SonarQube...
-                        echo sonar.projectKey=devops-maram-windows > sonar-project.properties
-                        echo sonar.projectName=DevOps Maram Windows >> sonar-project.properties
-                        echo sonar.projectVersion=1.0 >> sonar-project.properties
-                        echo sonar.sources=src/main/java >> sonar-project.properties
-                        echo sonar.sourceEncoding=UTF-8 >> sonar-project.properties
-                        echo sonar.host.url=http://localhost:9000 >> sonar-project.properties
+                        # MÉTHODE GARANTIE - Network host
+                        echo "🔧 Configuration..."
+                        echo "SonarQube URL: ${SONAR_HOST}"
                         
-                        echo Fichiers a analyser:
-                        dir src\\main\\java\\com\\devops\\ /B
-                        
-                        echo Execution du scanner SonarQube...
-                        docker run --rm -v "%CD%":/usr/src sonarsource/sonar-scanner-cli:latest ^
-                          -Dsonar.projectKey=devops-maram-windows ^
-                          -Dsonar.projectName="DevOps Maram Windows" ^
-                          -Dsonar.host.url=http://host.docker.internal:9000 ^
-                          -Dsonar.sources=src/main/java ^
-                          -Dsonar.sourceEncoding=UTF-8
+                        # Scanner avec network=host pour accéder au localhost
+                        docker run --rm \\
+                          --network=host \\
+                          -v \$(pwd):/usr/src \\
+                          sonarsource/sonar-scanner-cli:latest \\
+                          -Dsonar.projectKey=devops-maram-final-fix \\
+                          -Dsonar.projectName="DevOps Maram FINAL" \\
+                          -Dsonar.host.url=http://localhost:9000 \\
+                          -Dsonar.sources=src/main/java \\
+                          -Dsonar.sourceEncoding=UTF-8 \\
+                          -Dsonar.scm.disabled=true
                           
-                        echo Analyse SonarQube TERMINEE!
-                    '''
+                        echo "✅ Analyse COMPLÈTEMENT envoyée à SonarQube!"
+                    """
                 }
             }
         }
         
-        stage('Verify Analysis') {
+        stage('Wait and Verify') {
             steps {
-                echo "📊 Vérification..."
-                bat '''
-                    @echo off
-                    echo.
-                    echo ==================================
-                    echo ✅ ANALYSE SONARQUBE EFFECTUEE!
-                    echo ==================================
-                    echo.
-                    echo 🌐 OUVREZ SONARQUBE MAINTENANT:
-                    echo    http://localhost:9000
-                    echo.
-                    echo 🔍 CHERCHEZ LE PROJET:
-                    echo    "DevOps Maram Windows"
-                    echo.
-                    echo 📍 URL DIRECTE:
-                    echo    http://localhost:9000/dashboard?id=devops-maram-windows
-                    echo.
-                    echo ⏱️  Attendez 1-2 minutes puis rafraichissez la page
-                    echo ==================================
+                echo "⏳ Attente traitement..."
+                script {
+                    sleep 15  // Attendre que SonarQube traite l'analyse
+                }
+                sh '''
+                    echo "🎉 ANALYSE TERMINÉE !"
+                    echo ""
+                    echo "🌐 OUVREZ MAINTENANT:"
+                    echo "   http://localhost:9000/projects"
+                    echo ""
+                    echo "🔍 CHERCHEZ: 'DevOps Maram FINAL'"
+                    echo ""
+                    echo "📍 URL DIRECTE:"
+                    echo "   http://localhost:9000/dashboard?id=devops-maram-final-fix"
+                    echo ""
+                    echo "⏱️  Si pas visible, attendez 30 secondes et rafraîchissez"
                 '''
             }
         }
