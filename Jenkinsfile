@@ -4,7 +4,7 @@ pipeline {
     environment {
         SONAR_PROJECT_KEY = 'DevOps-Project-Maram'
         SONAR_PROJECT_NAME = 'DevOps Project Maram'
-        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_HOST_URL = 'http://host.docker.internal:9000'  // Correction importante
     }
     
     stages {
@@ -108,7 +108,7 @@ EOF
                             echo "Lancement de l analyse SonarQube RELLE..."
                             
                             # Reconfigurer le PATH pour cette session
-                            export PATH=''' + '"$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH"' + '''
+                            export PATH=$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH
                             
                             # Verifier que SonarScanner est disponible
                             if which sonar-scanner >/dev/null 2>&1; then
@@ -123,11 +123,37 @@ EOF
                             fi
                             
                             echo "Verification de la connexion a SonarQube..."
+                            echo "Tentative de connexion a: ''' + "${SONAR_HOST_URL}" + '''"
+                            
+                            # Tester differentes URLs possibles pour SonarQube
+                            SONAR_ACCESSIBLE=false
+                            
+                            # Essayer host.docker.internal (Docker pour Windows/Mac)
                             if curl -s -f "''' + "${SONAR_HOST_URL}" + '''/api/system/status" > /dev/null; then
-                                echo "SonarQube accessible"
+                                echo "✅ SonarQube accessible via host.docker.internal"
+                                SONAR_ACCESSIBLE=true
                             else
-                                echo "ERREUR: SonarQube non accessible a ''' + "${SONAR_HOST_URL}" + '''"
-                                echo "Verification de l URL et du demarrage de SonarQube"
+                                echo "❌ Echec de connexion via host.docker.internal"
+                            fi
+                            
+                            # Essayer l IP de l hote (172.17.0.1 est l IP par defaut de Docker Gateway)
+                            if [ "$SONAR_ACCESSIBLE" = "false" ]; then
+                                if curl -s -f "http://172.17.0.1:9000/api/system/status" > /dev/null; then
+                                    echo "✅ SonarQube accessible via 172.17.0.1"
+                                    export SONAR_HOST_URL="http://172.17.0.1:9000"
+                                    SONAR_ACCESSIBLE=true
+                                else
+                                    echo "❌ Echec de connexion via 172.17.0.1"
+                                fi
+                            fi
+                            
+                            if [ "$SONAR_ACCESSIBLE" = "false" ]; then
+                                echo "❌ ERREUR CRITIQUE: SonarQube non accessible"
+                                echo "Verifications a effectuer:"
+                                echo "1. SonarQube est-il demarre sur votre machine hote?"
+                                echo "2. Le port 9000 est-il accessible?"
+                                echo "3. Essayez: docker ps (pour verifier les conteneurs)"
+                                echo "4. Essayez: curl http://localhost:9000 (sur la machine hote)"
                                 exit 1
                             fi
                             
@@ -143,8 +169,8 @@ EOF
                                 -Dsonar.junit.reportsPath=target/surefire-reports \\
                                 -Dsonar.sourceEncoding=UTF-8
                             
-                            echo "Analyse SonarQube terminee avec succes"
-                            echo "Rapport disponible sur: ''' + "${SONAR_HOST_URL}" + '''/dashboard?id=''' + "${SONAR_PROJECT_KEY}" + '''"
+                            echo "✅ Analyse SonarQube terminee avec succes"
+                            echo "🔗 Rapport disponible sur: ''' + "${SONAR_HOST_URL}" + '''/dashboard?id=''' + "${SONAR_PROJECT_KEY}" + '''"
                         '''
                     }
                 }
@@ -162,12 +188,12 @@ EOF
                             
                             echo "Verification du Quality Gate..."
                             if curl -s -u "''' + "${SONAR_TOKEN}" + '":' + ''' "''' + "${SONAR_HOST_URL}" + '''/api/qualitygates/project_status?projectKey=''' + "${SONAR_PROJECT_KEY}" + '''" > /dev/null 2>&1; then
-                                echo "QUALITY GATE: VERIFIE"
+                                echo "✅ QUALITY GATE: VERIFIE"
                             else
-                                echo "QUALITY GATE: NON VERIFIE (projet peut-etre en cours d analyse)"
+                                echo "⚠️ QUALITY GATE: NON VERIFIE (projet peut-etre en cours d analyse)"
                             fi
                             
-                            echo "Rapport SonarQube: ''' + "${SONAR_HOST_URL}" + '''/dashboard?id=''' + "${SONAR_PROJECT_KEY}" + '''"
+                            echo "📊 Rapport SonarQube: ''' + "${SONAR_HOST_URL}" + '''/dashboard?id=''' + "${SONAR_PROJECT_KEY}" + '''"
                         '''
                     }
                 }
