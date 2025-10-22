@@ -1,53 +1,55 @@
 pipeline {
     agent any
-
+    
     tools {
-        maven 'M3'  // Assurez-vous que Maven est configuré dans "Global Tool Configuration"
+        maven 'maven'
     }
-
+    
     environment {
-        // Ces variables ne sont plus nécessaires avec withSonarQubeEnv
-        // SONAR_HOST_URL = 'http://host.docker.internal:9001'
-        // SONAR_AUTH_TOKEN = credentials('sonarqube-token')
+        SONAR_SERVER_NAME = 'SonarQube'
+        PROJECT_KEY = 'DevOps_Project'
     }
-
+    
     stages {
-        stage('Cloner le code') {
+        stage('Checkout') {
             steps {
                 git url: 'https://github.com/user-nermine/DevOps_Project.git'
             }
         }
-
-        stage('Compiler le projet') {
+        
+        stage('Build & Tests') {
             steps {
-                sh 'mvn clean compile'
+                sh 'mvn -B clean verify'
             }
         }
-
-        stage('Tests unitaires') {
+        
+        stage('SonarQube Analysis') {
             steps {
-                sh 'mvn test'
+                withSonarQubeEnv("${env.SONAR_SERVER_NAME}") {
+                    sh "mvn -B sonar:sonar -Dsonar.projectKey=${env.PROJECT_KEY}"
+                }
             }
         }
-
-        stage('Analyse SonarQube') {
+        
+        stage('Quality Gate') {
             steps {
-                withSonarQubeEnv('sonar-server') {  // ← MUST MATCH Jenkins config
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=sample_project'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
     }
-
+    
     post {
         always {
-            // Ceci active l'affichage du statut Quality Gate
-            script {
-                def qg = waitForQualityGate()
-                if (qg.status != 'OK') {
-                    error "Quality Gate failed: ${qg.status}"
-                }
-            }
+            echo 'Pipeline completed'
+            // Nettoyage si nécessaire
+        }
+        success {
+            echo '✅ Pipeline succeeded!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
         }
     }
 }
