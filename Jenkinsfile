@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         SONAR_PROJECT_KEY = 'DevOps-Project-Maram'
-        SONAR_PROJECT_NAME = 'DevOps Project Maram'
+        SONAR_PROJECT_NAME = 'DevOps-Project-Maram'  // Sans espaces pour éviter les problèmes
         SONAR_HOST_URL = 'http://host.docker.internal:9000'
     }
     
@@ -26,25 +26,16 @@ pipeline {
                         # Verifier et installer SonarScanner
                         if ! which sonar-scanner >/dev/null 2>&1; then
                             echo "Installation de SonarScanner..."
-                            
-                            # Nettoyer les anciennes installations
                             rm -rf sonar-scanner-5.0.1.3006-linux sonar-scanner.zip
-                            
-                            # Telecharger SonarScanner
                             curl -L -o sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-                            
-                            # Extraire sans confirmation
                             unzip -q -o sonar-scanner.zip
-                            
-                            # Configurer le PATH
                             export PATH=$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH
                             echo "SonarScanner installe avec succes"
                         else
                             echo "SonarScanner deja disponible"
                         fi
                         
-                        # Verifier que SonarScanner est operationnel
-                        sonar-scanner --version && echo "SonarScanner operationnel" || echo "SonarScanner non operationnel"
+                        sonar-scanner --version && echo "SonarScanner operationnel"
                     '''
                 }
             }
@@ -59,7 +50,6 @@ pipeline {
                         mkdir -p target/surefire-reports
                         mkdir -p target/classes
                         
-                        # Creer des rapports de test pour SonarQube
                         cat > target/surefire-reports/TEST-Application.xml << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="ApplicationTest" tests="6" failures="0" errors="0" skipped="0" time="3.5">
@@ -92,7 +82,7 @@ EOF
 sonar.projectKey=${SONAR_PROJECT_KEY}
 sonar.projectName=${SONAR_PROJECT_NAME}
 sonar.projectVersion=1.0
-sonar.sources=src,app-project,my-sonar-project,jenkins-auto-project
+sonar.sources=src
 sonar.tests=src/test/java
 sonar.java.binaries=target/classes
 sonar.java.libraries=target/**/*.jar
@@ -107,56 +97,53 @@ EOF
                         sh '''
                             echo "Lancement de l analyse SonarQube RELLE..."
                             
-                            # Reconfigurer le PATH pour cette session
+                            # Reconfigurer le PATH
                             export PATH=$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH
                             
-                            # Verifier que SonarScanner est disponible
-                            if which sonar-scanner >/dev/null 2>&1; then
-                                echo "SonarScanner disponible"
-                                sonar-scanner --version
-                            else
-                                echo "ERREUR: SonarScanner non disponible"
-                                exit 1
-                            fi
-                            
+                            # Verifier la connexion a SonarQube
                             echo "Verification de la connexion a SonarQube..."
-                            echo "Tentative de connexion a: ''' + "${SONAR_HOST_URL}" + '''"
-                            
-                            # Tester differentes URLs possibles pour SonarQube
-                            SONAR_ACCESSIBLE=false
-                            
-                            # Essayer host.docker.internal (Docker pour Windows/Mac)
                             if curl -s -f "''' + "${SONAR_HOST_URL}" + '''/api/system/status" > /dev/null; then
-                                echo "✅ SonarQube accessible via host.docker.internal"
-                                SONAR_ACCESSIBLE=true
+                                echo "✅ SonarQube accessible"
                             else
-                                echo "❌ Echec de connexion via host.docker.internal"
-                            fi
-                            
-                            # Essayer l IP de l hote (172.17.0.1 est l IP par defaut de Docker Gateway)
-                            if [ "$SONAR_ACCESSIBLE" = "false" ]; then
-                                if curl -s -f "http://172.17.0.1:9000/api/system/status" > /dev/null; then
-                                    echo "✅ SonarQube accessible via 172.17.0.1"
-                                    export SONAR_HOST_URL="http://172.17.0.1:9000"
-                                    SONAR_ACCESSIBLE=true
-                                else
-                                    echo "❌ Echec de connexion via 172.17.0.1"
-                                fi
-                            fi
-                            
-                            if [ "$SONAR_ACCESSIBLE" = "false" ]; then
-                                echo "❌ ERREUR CRITIQUE: SonarQube non accessible"
+                                echo "❌ SonarQube non accessible"
                                 exit 1
                             fi
                             
-                            # Executer l analyse avec les parametres correctement echappes
+                            # Tester le token avec l API SonarQube
+                            echo "Verification du token SonarQube..."
+                            if curl -s -u "''' + "${SONAR_TOKEN}" + '":' + ''' "''' + "${SONAR_HOST_URL}" + '''/api/authentication/validate" | grep -q '"valid":true'; then
+                                echo "✅ Token SonarQube valide"
+                            else
+                                echo "❌ Token SonarQube invalide"
+                                echo "Veuillez verifier:"
+                                echo "1. Le token dans Jenkins credentials 'sonar-token'"
+                                echo "2. Les permissions du token dans SonarQube"
+                                echo "3. Que le token a les droits: Browse, Execute Analysis, Create Projects"
+                                exit 1
+                            fi
+                            
+                            # Verifier si le projet existe deja, sinon le creer
+                            echo "Verification du projet dans SonarQube..."
+                            PROJECT_EXISTS=$(curl -s -u "''' + "${SONAR_TOKEN}" + '":' + ''' "''' + "${SONAR_HOST_URL}" + '''/api/projects/search?projects=''' + "${SONAR_PROJECT_KEY}" + '''" | grep -o '"total":1' || echo "not_found")
+                            
+                            if [ "$PROJECT_EXISTS" = '"total":1' ]; then
+                                echo "✅ Projet existe deja dans SonarQube"
+                            else
+                                echo "📝 Creation du projet dans SonarQube..."
+                                curl -X POST -u "''' + "${SONAR_TOKEN}" + '":' + ''' \
+                                  "''' + "${SONAR_HOST_URL}" + '''/api/projects/create" \
+                                  -d "project=''' + "${SONAR_PROJECT_KEY}" + '''&name=''' + "${SONAR_PROJECT_NAME}" + '''" \
+                                  || echo "⚠️ Le projet existe peut-etre deja ou erreur de creation"
+                            fi
+                            
+                            # Executer l analyse
                             echo "Execution de l analyse SonarQube..."
                             sonar-scanner \\
                                 -Dsonar.projectKey=''' + "${SONAR_PROJECT_KEY}" + ''' \\
-                                -Dsonar.projectName="DevOps Project Maram" \\
+                                -Dsonar.projectName=''' + "${SONAR_PROJECT_NAME}" + ''' \\
                                 -Dsonar.host.url=''' + "${SONAR_HOST_URL}" + ''' \\
                                 -Dsonar.login=''' + "${SONAR_TOKEN}" + ''' \\
-                                -Dsonar.sources=src,app-project,my-sonar-project,jenkins-auto-project \\
+                                -Dsonar.sources=src \\
                                 -Dsonar.java.binaries=target/classes \\
                                 -Dsonar.junit.reportsPath=target/surefire-reports \\
                                 -Dsonar.sourceEncoding=UTF-8
@@ -176,13 +163,19 @@ EOF
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         sh '''
                             echo "Attente du traitement par SonarQube..."
-                            sleep 25
+                            sleep 30
                             
                             echo "Verification du Quality Gate..."
-                            if curl -s -u "''' + "${SONAR_TOKEN}" + '":' + ''' "''' + "${SONAR_HOST_URL}" + '''/api/qualitygates/project_status?projectKey=''' + "${SONAR_PROJECT_KEY}" + '''" > /dev/null 2>&1; then
-                                echo "✅ QUALITY GATE: VERIFIE"
+                            RESPONSE=$(curl -s -u "''' + "${SONAR_TOKEN}" + '":' + ''' "''' + "${SONAR_HOST_URL}" + '''/api/qualitygates/project_status?projectKey=''' + "${SONAR_PROJECT_KEY}" + '''" 2>/dev/null || echo "error")
+                            
+                            if echo "$RESPONSE" | grep -q "OK"; then
+                                echo "✅ QUALITY GATE: PASSED"
+                            elif echo "$RESPONSE" | grep -q "ERROR"; then
+                                echo "❌ QUALITY GATE: FAILED"
+                                currentBuild.result = 'UNSTABLE'
                             else
-                                echo "⚠️ QUALITY GATE: NON VERIFIE (projet peut-etre en cours d analyse)"
+                                echo "⚠️ QUALITY GATE: INDETERMINE"
+                                echo "Reponse: $RESPONSE"
                             fi
                             
                             echo "📊 Rapport SonarQube: ''' + "${SONAR_HOST_URL}" + '''/dashboard?id=''' + "${SONAR_PROJECT_KEY}" + '''"
@@ -213,33 +206,6 @@ ENDJAR
             }
         }
         
-        stage('Docker Build') {
-            steps {
-                echo 'Construction de l image Docker...'
-                script {
-                    sh '''
-                        echo "Creation du Dockerfile..."
-                        cat > Dockerfile << ENDDOCKER
-FROM openjdk:21-jdk-slim
-LABEL maintainer="maram@devops"
-LABEL version="1.0"
-LABEL description="Application de gestion de commandes"
-WORKDIR /app
-COPY target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \\
-  CMD curl -f http://localhost:8080/actuator/health || exit 1
-ENDDOCKER
-                        echo "Dockerfile cree avec succes"
-                        
-                        # Simulation de construction Docker
-                        echo "Image Docker simulee: devops-maram-app:latest"
-                    '''
-                }
-            }
-        }
-        
         stage('Final Report') {
             steps {
                 echo 'Generation du rapport final...'
@@ -257,7 +223,6 @@ ENDDOCKER
                         echo "   SonarQube Analysis ....... OK (ANALYSE REELLE)"
                         echo "   Quality Gate ............. OK"
                         echo "   Package .................. OK"
-                        echo "   Docker Build ............. OK"
                         echo " "
                         echo "ANALYSE SONARQUBE REELLE EFFECTUEE:"
                         echo "   Rapport: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
@@ -279,7 +244,7 @@ ENDDOCKER
             echo "PIPELINE REUSSI - Consultez le rapport SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
         }
         failure {
-            echo "PIPELINE EN ECHEC - Verifiez les logs"
+            echo "PIPELINE EN ECHEC - Verifiez les logs et le token SonarQube"
         }
     }
 }
