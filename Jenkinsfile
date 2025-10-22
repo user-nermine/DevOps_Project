@@ -5,22 +5,10 @@ pipeline {
     }
     
     stages {
-        stage('Tool Install') {
+        stage('Checkout') {
             steps {
-                echo "🔧 Installation et configuration des outils..."
-                sh 'mvn --version'
-            }
-        }
-        
-        stage('Create Complete Project') {
-            steps {
-                echo "📁 Préparation du projet..."
-                sh '''
-                    echo "Structure du projet :"
-                    ls -la
-                    echo "Fichiers sources :"
-                    find . -name "*.java" -type f | head -10 || echo "Aucun fichier Java trouvé"
-                '''
+                echo "📁 Récupération du code..."
+                checkout scm
             }
         }
         
@@ -32,13 +20,6 @@ pipeline {
             post {
                 always {
                     junit 'target/surefire-reports/*.xml'
-                    script {
-                        if (fileExists('target')) {
-                            echo "✅ Dossier target créé avec succès"
-                        } else {
-                            echo "⚠️ Le dossier target n'existe pas"
-                        }
-                    }
                 }
             }
         }
@@ -52,11 +33,8 @@ pipeline {
                 success {
                     script {
                         if (fileExists('target/Order-1.0-SNAPSHOT.jar')) {
-                            echo "✅ Fichier JAR généré : Order-1.0-SNAPSHOT.jar"
+                            echo "✅ JAR généré: Order-1.0-SNAPSHOT.jar"
                             sh 'ls -lh target/Order-1.0-SNAPSHOT.jar'
-                        } else {
-                            echo "❌ Aucun fichier JAR trouvé"
-                            sh 'ls -la target/ || echo "Dossier target inaccessible"'
                         }
                     }
                 }
@@ -68,18 +46,16 @@ pipeline {
                 echo "🔍 Analyse SonarQube..."
                 script {
                     try {
-                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN_SECURE')]) {
+                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                             sh """
                                 mvn sonar:sonar \
                                   -Dsonar.projectKey=order-project \
-                                  -Dsonar.projectName="Order Service" \
-                                  -Dsonar.host.url=http://localhost:9000 \
-                                  -Dsonar.login=${SONAR_TOKEN_SECURE}
+                                  -Dsonar.host.url=http://sonarqube:9000 \
+                                  -Dsonar.login=${SONAR_TOKEN}
                             """
                         }
                     } catch (Exception e) {
-                        echo "⚠️ SonarQube ignoré : Token non configuré"
-                        echo "ℹ️ Configurez le credential 'SONAR_TOKEN' dans Jenkins"
+                        echo "⚠️ SonarQube ignoré - Configurez SONAR_TOKEN dans Jenkins"
                     }
                 }
             }
@@ -88,19 +64,19 @@ pipeline {
     
     post {
         always {
-            echo "📊 Pipeline terminé - Consultez les rapports"
+            echo "📊 Pipeline terminé"
             script {
                 if (fileExists('target/Order-1.0-SNAPSHOT.jar')) {
                     archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-                    echo "📦 Artifacts archivés"
+                    echo "📦 Artifact archivé"
                 }
             }
         }
         success {
-            echo "✅✅✅ PIPELINE RÉUSSI ! ✅✅✅"
+            echo "✅✅✅ SUCCÈS ✅✅✅"
         }
         failure {
-            echo "❌❌❌ PIPELINE EN ÉCHEC ❌❌❌"
+            echo "❌❌❌ ÉCHEC ❌❌❌"
         }
     }
 }
