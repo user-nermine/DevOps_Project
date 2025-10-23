@@ -26,7 +26,7 @@ pipeline {
 
         stage('Compiler le projet') {
             steps {
-                echo 'Compilation avec Maven...'
+                echo 'Compilation avec  Maven...'
                 dir('Order'){
                 sh 'mvn clean compile'
                 }
@@ -101,6 +101,7 @@ pipeline {
         }
     }
 }
+
 
 
 
