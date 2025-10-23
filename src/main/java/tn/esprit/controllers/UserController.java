@@ -14,12 +14,8 @@ import tn.esprit.entities.User;
 import tn.esprit.services.UserServiceImpl;
 
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class UserController {
-
-    private static final Logger LOGGER = Logger.getLogger(UserController.class.getName());
 
     @FXML
     private ListView<String> userListView;
@@ -35,13 +31,13 @@ public class UserController {
     @FXML
     public void handleGoToOrder() {
         try {
-            var loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/order.fxml"));
-            var root = loader.load();
+            var loader = new FXMLLoader(getClass().getResource("/tn/esprit/views/order.fxml"));
+            Parent root = (Parent) loader.load();
             var stage = (Stage) goToOrderButton.getScene().getWindow();
             stage.setScene(new Scene(root));
             stage.setTitle("Gestion des Commandes");
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Erreur lors du chargement de la vue Order", e);
+            e.printStackTrace();
         }
     }
 
@@ -51,10 +47,11 @@ public class UserController {
     }
 
     private void loadUsers() {
-        var items = FXCollections.observableArrayList();
-        for (var user : userService.getAll()) {
-            items.add(user.getId() + " - " + user.getUsername() + " (" + user.getEmail() + ")");
-        }
+        var items = FXCollections.observableArrayList(
+            userService.getAll().stream()
+                .map(user -> user.getId() + " - " + user.getUsername() + " (" + user.getEmail() + ")")
+                .toList()
+        );
         userListView.setItems(items);
     }
 
@@ -63,9 +60,9 @@ public class UserController {
         var username = usernameField.getText().trim();
         var email = emailField.getText().trim();
         if (!username.isEmpty() && !email.isEmpty()) {
-            var user = new User(0, username, email); // id = 0 car auto-increment en DB
+            var user = new User(0, username, email);
             userService.add(user);
-            loadUsers(); // recharger la liste
+            loadUsers();
             usernameField.clear();
             emailField.clear();
         }
@@ -80,7 +77,7 @@ public class UserController {
                 userService.delete(id);
                 loadUsers();
             } catch (NumberFormatException e) {
-                LOGGER.log(Level.WARNING, "Erreur lors de la suppression : id invalide", e);
+                System.err.println("Erreur lors de la suppression : id invalide");
             }
         }
     }

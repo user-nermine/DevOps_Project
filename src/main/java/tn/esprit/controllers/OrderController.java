@@ -8,10 +8,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.ListView;
-import javafx.scene.control.SelectionMode;
+import javafx.scene.control.*;
 import javafx.stage.Stage;
 import tn.esprit.entities.Order;
 import tn.esprit.entities.Product;
@@ -34,13 +31,25 @@ public class OrderController {
     private ListView<Order> orderListView;
 
     private OrderServiceImpl orderService;
+    private ProductServiceImpl productService;
+
+    @FXML
+    private void handleGoToProduct(ActionEvent event) {
+        try {
+            var loader = new FXMLLoader(getClass().getResource("/tn/esprit/views/product.fxml"));
+            Parent root = (Parent) loader.load();
+            var stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            stage.setScene(new Scene(root));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     @FXML
     public void initialize() {
         orderService = new OrderServiceImpl();
-
+        productService = new ProductServiceImpl();
         var userService = new UserServiceImpl();
-        var productService = new ProductServiceImpl();
 
         var users = FXCollections.observableArrayList(userService.getAll());
         userComboBox.setItems(users);
@@ -53,27 +62,12 @@ public class OrderController {
     }
 
     private void loadOrders() {
-        var orders = orderService.getAll();
-        orderListView.setItems(FXCollections.observableArrayList(orders));
-    }
-
-    @FXML
-    private void handleGoToProduct(ActionEvent event) {
-        try {
-            var loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/product.fxml"));
-            var root = loader.load();
-            var stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(new Scene(root));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        var orders = FXCollections.observableArrayList(orderService.getAll());
+        orderListView.setItems(orders);
     }
 
     @FXML
     public void handleAddOrder() {
-        var userService = new UserServiceImpl();
-        var productService = new ProductServiceImpl();
-
         var selectedUser = userComboBox.getSelectionModel().getSelectedItem();
         var selectedProducts = productListView.getSelectionModel().getSelectedItems();
 

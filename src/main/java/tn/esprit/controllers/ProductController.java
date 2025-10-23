@@ -33,10 +33,10 @@ public class ProductController {
     private ComboBox<Category> categoryComboBox;
 
     @FXML
-    private void handleGoToProduct(ActionEvent event) {
+    private void handleGoToCategory(ActionEvent event) {
         try {
-            var loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/category.fxml"));
-            var root = loader.load();
+            var loader = new FXMLLoader(getClass().getResource("/tn.esprit/views/category.fxml"));
+            Parent root = (Parent) loader.load();
             var stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             stage.setScene(new Scene(root));
         } catch (IOException e) {
@@ -49,7 +49,6 @@ public class ProductController {
         loadCategoriesFromDB();
         loadProducts();
 
-        // Afficher le nom des catégories dans la ComboBox
         categoryComboBox.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(Category item, boolean empty) {
@@ -113,7 +112,6 @@ public class ProductController {
             alert.showAndWait();
             return;
         }
-
         productService.delete(selectedProduct.getIdProduct());
         loadProducts();
     }

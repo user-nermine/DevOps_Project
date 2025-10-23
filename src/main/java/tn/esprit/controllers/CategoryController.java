@@ -45,8 +45,9 @@ public class CategoryController {
     @FXML
     public void handleGoToProduct() {
         try {
-            var loader = new FXMLLoader(getClass().getResource("/tn/esprit/views/product.fxml"));
-            var root = loader.load();
+            var loader = new FXMLLoader(getClass().getResource("/tn.esprit/views/other.fxml"));
+            Parent root = (Parent) loader.load();
+
             var stage = (Stage) btnGoToProduct.getScene().getWindow();
             stage.setScene(new Scene(root));
         } catch (IOException e) {
