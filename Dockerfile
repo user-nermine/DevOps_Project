@@ -8,8 +8,6 @@ COPY pom.xml .
 COPY src ./src
 
 
-# (Optionnel) pour vérifier que le JAR a bien été créé
-RUN echo "=== Contenu du dossier target ===" && ls -l /app/target
 
 # Étape 2 : Image finale
 FROM eclipse-temurin:21-jre-jammy
