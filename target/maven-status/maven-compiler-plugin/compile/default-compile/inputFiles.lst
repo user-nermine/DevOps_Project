@@ -1,0 +1,15 @@
+/workspaces/DevOps_Project/src/main/java/tn/esprit/Main.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/services/IGenericService.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/controllers/UserController.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/services/OrderServiceImpl.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/entities/Product.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/services/UserServiceImpl.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/controllers/CategoryController.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/entities/Order.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/utils/DataBase.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/services/ProductServiceImpl.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/controllers/OrderController.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/entities/User.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/controllers/ProductController.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/services/CategoryServiceImpl.java
+/workspaces/DevOps_Project/src/main/java/tn/esprit/entities/Category.java

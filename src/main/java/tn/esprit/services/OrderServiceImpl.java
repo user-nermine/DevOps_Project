@@ -21,38 +21,43 @@ public class OrderServiceImpl implements IGenericService<Order> {
         }
     }
 
-    @Override
-    public void add(Order order) {
-        try {
-            double total = order.getProducts().stream().mapToDouble(Product::getPrice).sum();
+@Override
+public void add(Order order) {
+    String sqlOrder = "INSERT INTO `order` (user_id, total, order_date) VALUES (?, ?, ?)";
+    String sqlDetail = "INSERT INTO order_product(order_id, product_id) VALUES (?, ?)";
+    double total = order.getProducts().stream().mapToDouble(Product::getPrice).sum();
 
-            // Insérer la commande
-            String sqlOrder = "INSERT INTO `order` (user_id, total, order_date) VALUES (?, ?, ?)";
-            PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS);
-            psOrder.setInt(1, order.getUser().getId());
-            psOrder.setDouble(2, total);
-            psOrder.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
-            psOrder.executeUpdate();
+    try (
+        PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS)
+    ) {
+        // Insertion de la commande
+        psOrder.setInt(1, order.getUser().getId());
+        psOrder.setDouble(2, total);
+        psOrder.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+        psOrder.executeUpdate();
 
-            ResultSet rs = psOrder.getGeneratedKeys();
-            int orderId = 0;
+        // Récupération de l'ID généré
+        int orderId = 0;
+        try (ResultSet rs = psOrder.getGeneratedKeys()) {
             if (rs.next()) {
                 orderId = rs.getInt(1);
             }
+        }
 
-            // Insérer les produits dans order_product
-            String sqlDetail = "INSERT INTO order_product(order_id, product_id) VALUES (?, ?)";
+        // Insertion des produits associés
+        try (PreparedStatement psDetail = conn.prepareStatement(sqlDetail)) {
             for (Product p : order.getProducts()) {
-                PreparedStatement psDetail = conn.prepareStatement(sqlDetail);
                 psDetail.setInt(1, orderId);
                 psDetail.setInt(2, p.getIdProduct());
-                psDetail.executeUpdate();
+                psDetail.addBatch(); // optimisation (évite multiples executeUpdate)
             }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+            psDetail.executeBatch();
         }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+}
 
     @Override
     public void update(Order order) {
