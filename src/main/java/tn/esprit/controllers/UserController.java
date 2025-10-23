@@ -7,65 +7,63 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import tn.esprit.entities.User;
 import tn.esprit.services.UserServiceImpl;
 
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
-
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class UserController {
 
+    private static final Logger LOGGER = Logger.getLogger(UserController.class.getName());
+
     @FXML
     private ListView<String> userListView;
-
     @FXML
     private TextField usernameField;
-
     @FXML
     private TextField emailField;
     @FXML
     private Button goToOrderButton;
+
+    private final UserServiceImpl userService = new UserServiceImpl();
+
     @FXML
     public void handleGoToOrder() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/order.fxml"));
-            Parent root = loader.load();
-            Stage stage = (Stage) goToOrderButton.getScene().getWindow();
+            var loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/order.fxml"));
+            var root = loader.load();
+            var stage = (Stage) goToOrderButton.getScene().getWindow();
             stage.setScene(new Scene(root));
             stage.setTitle("Gestion des Commandes");
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Erreur lors du chargement de la vue Order", e);
         }
     }
-    private final UserServiceImpl userService = new UserServiceImpl();
 
-    // Méthode appelée automatiquement après le chargement du FXML
     @FXML
     public void initialize() {
         loadUsers();
     }
 
-    // Charger tous les utilisateurs dans la ListView
     private void loadUsers() {
-        ObservableList<String> items = FXCollections.observableArrayList();
-        for (User user : userService.getAll()) {
+        var items = FXCollections.observableArrayList();
+        for (var user : userService.getAll()) {
             items.add(user.getId() + " - " + user.getUsername() + " (" + user.getEmail() + ")");
         }
         userListView.setItems(items);
     }
 
-
-    // Ajouter un utilisateur
     @FXML
     private void handleAddUser() {
-        String username = usernameField.getText().trim();
-        String email = emailField.getText().trim();
-
+        var username = usernameField.getText().trim();
+        var email = emailField.getText().trim();
         if (!username.isEmpty() && !email.isEmpty()) {
-            User user = new User(0, username, email); // id = 0 car auto-increment en DB
+            var user = new User(0, username, email); // id = 0 car auto-increment en DB
             userService.add(user);
             loadUsers(); // recharger la liste
             usernameField.clear();
@@ -73,17 +71,16 @@ public class UserController {
         }
     }
 
-    // Supprimer un utilisateur sélectionné
     @FXML
     private void handleDeleteUser() {
-        String selected = userListView.getSelectionModel().getSelectedItem();
+        var selected = userListView.getSelectionModel().getSelectedItem();
         if (selected != null) {
             try {
-                int id = Integer.parseInt(selected.split(" - ")[0]);
+                var id = Integer.parseInt(selected.split(" - ")[0]);
                 userService.delete(id);
                 loadUsers();
             } catch (NumberFormatException e) {
-                System.err.println("Erreur lors de la suppression : id invalide");
+                LOGGER.log(Level.WARNING, "Erreur lors de la suppression : id invalide", e);
             }
         }
     }

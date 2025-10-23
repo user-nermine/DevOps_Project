@@ -19,58 +19,70 @@ public class UserServiceImpl implements IGenericService<User> {
         }
     }
 
-    @Override
+   @Override
     public void add(User user) {
-        String sql = "INSERT INTO user(username, email) VALUES(?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        var sql = "INSERT INTO user(username, email) VALUES(?, ?)";
+        try (var ps = conn.prepareStatement(sql)) {
             ps.setString(1, user.getUsername());
             ps.setString(2, user.getEmail());
             ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void update(User user) {
-        String sql = "UPDATE user SET username=?, email=? WHERE id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        var sql = "UPDATE user SET username=?, email=? WHERE id=?";
+        try (var ps = conn.prepareStatement(sql)) {
             ps.setString(1, user.getUsername());
             ps.setString(2, user.getEmail());
             ps.setInt(3, user.getId());
             ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void delete(int id) {
-        String sql = "DELETE FROM user WHERE id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        var sql = "DELETE FROM user WHERE id=?";
+        try (var ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public User getById(int id) {
-        String sql = "SELECT * FROM user WHERE id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        var sql = "SELECT * FROM user WHERE id=?";
+        try (var ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return new User(rs.getInt("id"), rs.getString("username"), rs.getString("email"));
-        } catch (SQLException e) { e.printStackTrace(); }
+            try (var rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new User(rs.getInt("id"), rs.getString("username"), rs.getString("email"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return null;
     }
 
     @Override
     public List<User> getAll() {
-        List<User> list = new ArrayList<>();
-        String sql = "SELECT * FROM user";
-        try (Statement st = conn.createStatement()) {
-            ResultSet rs = st.executeQuery(sql);
-            while (rs.next())
+        var list = new ArrayList<User>();
+        var sql = "SELECT * FROM user";
+        try (var st = conn.createStatement();
+             var rs = st.executeQuery(sql)) {
+            while (rs.next()) {
                 list.add(new User(rs.getInt("id"), rs.getString("username"), rs.getString("email")));
-        } catch (SQLException e) { e.printStackTrace(); }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return list;
     }
 }
-

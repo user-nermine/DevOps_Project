@@ -21,13 +21,10 @@ public class CategoryController {
 
     @FXML
     private ListView<Category> listViewCategories;
-
     @FXML
     private Button btnGoToProduct;
-
     @FXML
     private Button btnAddCategory;
-
     @FXML
     private Button btnDeleteCategory;
 
@@ -48,9 +45,9 @@ public class CategoryController {
     @FXML
     public void handleGoToProduct() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/tn/esprit/views/product.fxml"));
-            Parent root = loader.load();
-            Stage stage = (Stage) btnGoToProduct.getScene().getWindow();
+            var loader = new FXMLLoader(getClass().getResource("/tn/esprit/views/product.fxml"));
+            var root = loader.load();
+            var stage = (Stage) btnGoToProduct.getScene().getWindow();
             stage.setScene(new Scene(root));
         } catch (IOException e) {
             e.printStackTrace();
@@ -59,12 +56,13 @@ public class CategoryController {
 
     @FXML
     public void handleAddCategory() {
-        TextInputDialog dialog = new TextInputDialog();
+        var dialog = new TextInputDialog();
         dialog.setTitle("Add Category");
         dialog.setHeaderText("Enter category name:");
-        Optional<String> result = dialog.showAndWait();
+        var result = dialog.showAndWait();
+
         result.ifPresent(name -> {
-            Category c = new Category(0, name); // id sera auto_increment
+            var c = new Category(0, name); // id sera auto_increment
             categoryService.addCategory(c);
             loadCategories();
         });
@@ -72,7 +70,7 @@ public class CategoryController {
 
     @FXML
     public void handleDeleteCategory() {
-        Category selected = listViewCategories.getSelectionModel().getSelectedItem();
+        var selected = listViewCategories.getSelectionModel().getSelectedItem();
         if (selected != null) {
             categoryService.deleteCategory(selected.getIdCategory());
             loadCategories();

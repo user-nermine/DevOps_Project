@@ -25,30 +25,24 @@ public class ProductController {
 
     @FXML
     private ListView<Product> productListView;
-
     @FXML
     private TextField nameField;
-
     @FXML
     private TextField priceField;
-
     @FXML
     private ComboBox<Category> categoryComboBox;
-
-    private ObservableList<Product> productList;
 
     @FXML
     private void handleGoToProduct(ActionEvent event) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/category.fxml"));
-            Parent root = loader.load();
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            var loader = new FXMLLoader(getClass().getResource("/tn.esprit.views/category.fxml"));
+            var root = loader.load();
+            var stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             stage.setScene(new Scene(root));
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }private ObservableList<Category> categoryList;
-
+    }
 
     @FXML
     private void initialize() {
@@ -73,23 +67,23 @@ public class ProductController {
     }
 
     private void loadProducts() {
-        productList = FXCollections.observableArrayList(productService.getAll());
+        var productList = FXCollections.observableArrayList(productService.getAll());
         productListView.setItems(productList);
     }
 
     private void loadCategoriesFromDB() {
-        categoryList = FXCollections.observableArrayList(categoryService.getAll());
+        var categoryList = FXCollections.observableArrayList(categoryService.getAll());
         categoryComboBox.setItems(categoryList);
     }
 
     @FXML
     private void handleAddProduct() {
-        String name = nameField.getText();
-        String priceText = priceField.getText();
-        Category selectedCategory = categoryComboBox.getSelectionModel().getSelectedItem();
+        var name = nameField.getText();
+        var priceText = priceField.getText();
+        var selectedCategory = categoryComboBox.getSelectionModel().getSelectedItem();
 
         if (name.isEmpty() || priceText.isEmpty() || selectedCategory == null) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, "Veuillez remplir tous les champs !");
+            var alert = new Alert(Alert.AlertType.WARNING, "Veuillez remplir tous les champs !");
             alert.showAndWait();
             return;
         }
@@ -98,14 +92,13 @@ public class ProductController {
         try {
             price = Double.parseDouble(priceText);
         } catch (NumberFormatException e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR, "Le prix doit être un nombre valide !");
+            var alert = new Alert(Alert.AlertType.ERROR, "Le prix doit être un nombre valide !");
             alert.showAndWait();
             return;
         }
 
-        Product product = new Product(0, name, price, selectedCategory);
+        var product = new Product(0, name, price, selectedCategory);
         productService.add(product);
-
         loadProducts();
         nameField.clear();
         priceField.clear();
@@ -114,9 +107,9 @@ public class ProductController {
 
     @FXML
     private void handleDeleteProduct() {
-        Product selectedProduct = productListView.getSelectionModel().getSelectedItem();
+        var selectedProduct = productListView.getSelectionModel().getSelectedItem();
         if (selectedProduct == null) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, "Veuillez sélectionner un produit !");
+            var alert = new Alert(Alert.AlertType.WARNING, "Veuillez sélectionner un produit !");
             alert.showAndWait();
             return;
         }
