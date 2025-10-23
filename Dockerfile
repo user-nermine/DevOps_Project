@@ -1,16 +1,16 @@
-# Étape 1 : build avec Maven
-FROM maven:3.9.6-eclipse-temurin-21 AS build
-WORKDIR /app
-COPY pom.xml .
-COPY src ./src
+FROM alpine:latest
 
-# Étape 2 : image runtime
-FROM eclipse-temurin:21-jdk
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+# Installer Java 17
+RUN apk add --no-cache openjdk21
 
-# Exposer le port utilisé par l'application
+# Créer un dossier de travail
+WORKDIR /app
+
+# Copier le fichier .jar dans l'image Docker
+COPY target/*.jar app.jar
+
+# Exposer un port (si ton appli écoute sur un port, sinon optionnel)
 EXPOSE 8089
 
-# Lancer l'application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+#  Lancer l'application Java
+CMD ["java", "-jar", "app.jar"]
