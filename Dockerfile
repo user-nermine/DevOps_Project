@@ -1,15 +1,16 @@
-# Étape 1 : Utiliser une image Maven avec Java 21
-FROM maven:3.9.6-eclipse-temurin-21
-
-# Définir le répertoire de travail
+# Étape 1 : build avec Maven
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
+COPY pom.xml .
+COPY src ./src
 
-# Copier tout le projet dans le conteneur
-COPY . .
+# Étape 2 : image runtime
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-
-# Exposer le port utilisé par ton application
+# Exposer le port utilisé par l'application
 EXPOSE 8089
 
-# Lancer l’application
-CMD ["java", "-jar", "target/app.jar"]
+# Lancer l'application
+ENTRYPOINT ["java", "-jar", "app.jar"]
