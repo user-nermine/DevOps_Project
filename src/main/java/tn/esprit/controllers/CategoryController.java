@@ -15,7 +15,6 @@ import tn.esprit.services.CategoryServiceImpl;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
 public class CategoryController {
 
