@@ -1,14 +1,20 @@
-# Utilise OpenJDK 11 JRE slim pour exécuter le JAR
-FROM eclipse-temurin:21-jdk-jammy AS builder
+# Étape 1 : Builder avec Maven
+FROM maven:3.9.2-eclipse-temurin-21 AS builder
+WORKDIR /app
 
-# Variable pour le JAR généré par Maven
-ARG JAR_FILE=target/*.jar
+# Copier le pom et le code source
+COPY pom.xml .
+COPY src ./src
 
-# Copier le JAR dans l'image
-COPY ${JAR_FILE} app.jar
+# Compiler le projet et créer le JAR
+RUN mvn clean package -DskipTests
 
-# Exposer le port sur lequel l'application écoute
+# Étape 2 : Créer l'image finale plus légère
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+
+# Copier le JAR depuis l'étape builder
+COPY --from=builder /app/target/*.jar app.jar
+
 EXPOSE 8089
-
-# Commande pour lancer le JAR
 ENTRYPOINT ["java", "-jar", "/app.jar"]
