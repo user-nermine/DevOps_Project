@@ -10,82 +10,75 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OrderServiceImpl implements IGenericService<Order> {
-
-    private Connection conn;
+    private final Connection conn;
 
     public OrderServiceImpl() {
         try {
             conn = DataBase.getConnection();
         } catch (SQLException e) {
+            throw new RuntimeException("Erreur de connexion à la base de données", e);
+        }
+    }
+
+    @Override
+    public void add(Order order) {
+        String sqlOrder = "INSERT INTO `order` (user_id, total, order_date) VALUES (?, ?, ?)";
+        String sqlDetail = "INSERT INTO order_product(order_id, product_id) VALUES (?, ?)";
+        double total = order.getProducts().stream().mapToDouble(Product::getPrice).sum();
+
+        try (PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS)) {
+            psOrder.setInt(1, order.getUser().getId());
+            psOrder.setDouble(2, total);
+            psOrder.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+            psOrder.executeUpdate();
+
+            int orderId;
+            try (ResultSet rs = psOrder.getGeneratedKeys()) {
+                orderId = rs.next() ? rs.getInt(1) : 0;
+            }
+
+            try (PreparedStatement psDetail = conn.prepareStatement(sqlDetail)) {
+                for (Product p : order.getProducts()) {
+                    psDetail.setInt(1, orderId);
+                    psDetail.setInt(2, p.getIdProduct());
+                    psDetail.addBatch();
+                }
+                psDetail.executeBatch();
+            }
+
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-@Override
-public void add(Order order) {
-    String sqlOrder = "INSERT INTO `order` (user_id, total, order_date) VALUES (?, ?, ?)";
-    String sqlDetail = "INSERT INTO order_product(order_id, product_id) VALUES (?, ?)";
-    double total = order.getProducts().stream().mapToDouble(Product::getPrice).sum();
-
-    try (
-        PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS)
-    ) {
-        // Insertion de la commande
-        psOrder.setInt(1, order.getUser().getId());
-        psOrder.setDouble(2, total);
-        psOrder.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
-        psOrder.executeUpdate();
-
-        // Récupération de l'ID généré
-        int orderId = 0;
-        try (ResultSet rs = psOrder.getGeneratedKeys()) {
-            if (rs.next()) {
-                orderId = rs.getInt(1);
-            }
-        }
-
-        // Insertion des produits associés
-        try (PreparedStatement psDetail = conn.prepareStatement(sqlDetail)) {
-            for (Product p : order.getProducts()) {
-                psDetail.setInt(1, orderId);
-                psDetail.setInt(2, p.getIdProduct());
-                psDetail.addBatch(); // optimisation (évite multiples executeUpdate)
-            }
-            psDetail.executeBatch();
-        }
-
-    } catch (SQLException e) {
-        e.printStackTrace();
-    }
-}
-
     @Override
     public void update(Order order) {
-        try {
-            double total = order.getProducts().stream().mapToDouble(Product::getPrice).sum();
+        String sqlUpdate = "UPDATE `order` SET user_id=?, total=? WHERE idOrder=?";
+        String sqlDelete = "DELETE FROM order_product WHERE order_id=?";
+        String sqlDetail = "INSERT INTO order_product(order_id, product_id) VALUES (?, ?)";
+        double total = order.getProducts().stream().mapToDouble(Product::getPrice).sum();
 
-            // Mettre à jour la commande
-            String sql = "UPDATE `order` SET user_id=?, total=? WHERE idOrder=?";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, order.getUser().getId());
-            ps.setDouble(2, total);
-            ps.setInt(3, order.getIdOrder());
-            ps.executeUpdate();
+        try (PreparedStatement psUpdate = conn.prepareStatement(sqlUpdate);
+             PreparedStatement psDelete = conn.prepareStatement(sqlDelete);
+             PreparedStatement psDetail = conn.prepareStatement(sqlDetail)) {
 
-            // Supprimer les anciens produits
-            String del = "DELETE FROM order_product WHERE order_id=?";
-            PreparedStatement psDel = conn.prepareStatement(del);
-            psDel.setInt(1, order.getIdOrder());
-            psDel.executeUpdate();
+            // mise à jour de la commande
+            psUpdate.setInt(1, order.getUser().getId());
+            psUpdate.setDouble(2, total);
+            psUpdate.setInt(3, order.getIdOrder());
+            psUpdate.executeUpdate();
 
-            // Ajouter les nouveaux produits
-            String sqlDetail = "INSERT INTO order_product(order_id, product_id) VALUES (?, ?)";
+            // suppression des anciens produits
+            psDelete.setInt(1, order.getIdOrder());
+            psDelete.executeUpdate();
+
+            // ajout des nouveaux produits
             for (Product p : order.getProducts()) {
-                PreparedStatement psDetail = conn.prepareStatement(sqlDetail);
                 psDetail.setInt(1, order.getIdOrder());
                 psDetail.setInt(2, p.getIdProduct());
-                psDetail.executeUpdate();
+                psDetail.addBatch();
             }
+            psDetail.executeBatch();
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -94,14 +87,15 @@ public void add(Order order) {
 
     @Override
     public void delete(int id) {
-        try {
-            String delDetail = "DELETE FROM order_product WHERE order_id=?";
-            PreparedStatement psDelDetail = conn.prepareStatement(delDetail);
+        String delDetail = "DELETE FROM order_product WHERE order_id=?";
+        String delOrder = "DELETE FROM `order` WHERE idOrder=?";
+
+        try (PreparedStatement psDelDetail = conn.prepareStatement(delDetail);
+             PreparedStatement psDel = conn.prepareStatement(delOrder)) {
+
             psDelDetail.setInt(1, id);
             psDelDetail.executeUpdate();
 
-            String delOrder = "DELETE FROM `order` WHERE idOrder=?";
-            PreparedStatement psDel = conn.prepareStatement(delOrder);
             psDel.setInt(1, id);
             psDel.executeUpdate();
 
@@ -113,31 +107,31 @@ public void add(Order order) {
     @Override
     public List<Order> getAll() {
         List<Order> orders = new ArrayList<>();
-        try {
-            String sql = "SELECT * FROM `order`";
-            Statement st = conn.createStatement();
-            ResultSet rs = st.executeQuery(sql);
+        String sqlOrder = "SELECT * FROM `order`";
+        String sqlProd = "SELECT p.idProduct, p.name, p.price, p.idCategory " +
+                "FROM product p JOIN order_product op ON p.idProduct = op.product_id WHERE op.order_id=?";
+
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sqlOrder)) {
 
             while (rs.next()) {
                 int orderId = rs.getInt("idOrder");
                 int userId = rs.getInt("user_id");
                 User user = new User(userId, "", "");
 
-                // récupérer les produits
-                String sqlProd = "SELECT p.idProduct, p.name, p.price, p.idCategory FROM product p " +
-                        "JOIN order_product op ON p.idProduct = op.product_id WHERE op.order_id=?";
-                PreparedStatement psProd = conn.prepareStatement(sqlProd);
-                psProd.setInt(1, orderId);
-                ResultSet rsProd = psProd.executeQuery();
                 List<Product> products = new ArrayList<>();
-                while (rsProd.next()) {
-                    Product p = new Product(
-                            rsProd.getInt("idProduct"),
-                            rsProd.getString("name"),
-                            rsProd.getDouble("price"),
-                            null
-                    );
-                    products.add(p);
+                try (PreparedStatement psProd = conn.prepareStatement(sqlProd)) {
+                    psProd.setInt(1, orderId);
+                    try (ResultSet rsProd = psProd.executeQuery()) {
+                        while (rsProd.next()) {
+                            products.add(new Product(
+                                    rsProd.getInt("idProduct"),
+                                    rsProd.getString("name"),
+                                    rsProd.getDouble("price"),
+                                    null
+                            ));
+                        }
+                    }
                 }
 
                 orders.add(new Order(orderId, user, products));
@@ -151,35 +145,35 @@ public void add(Order order) {
 
     @Override
     public Order getById(int id) {
-        try {
-            String sql = "SELECT * FROM `order` WHERE idOrder=?";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
+        String sqlOrder = "SELECT * FROM `order` WHERE idOrder=?";
+        String sqlProd = "SELECT p.idProduct, p.name, p.price, p.idCategory " +
+                "FROM product p JOIN order_product op ON p.idProduct = op.product_id WHERE op.order_id=?";
 
-            if (rs.next()) {
-                int userId = rs.getInt("user_id");
-                User user = new User(userId, "", "");
+        try (PreparedStatement psOrder = conn.prepareStatement(sqlOrder)) {
+            psOrder.setInt(1, id);
+            try (ResultSet rs = psOrder.executeQuery()) {
+                if (rs.next()) {
+                    int userId = rs.getInt("user_id");
+                    User user = new User(userId, "", "");
 
-                String sqlProd = "SELECT p.idProduct, p.name, p.price, p.idCategory FROM product p " +
-                        "JOIN order_product op ON p.idProduct = op.product_id WHERE op.order_id=?";
-                PreparedStatement psProd = conn.prepareStatement(sqlProd);
-                psProd.setInt(1, id);
-                ResultSet rsProd = psProd.executeQuery();
-                List<Product> products = new ArrayList<>();
-                while (rsProd.next()) {
-                    Product p = new Product(
-                            rsProd.getInt("idProduct"),
-                            rsProd.getString("name"),
-                            rsProd.getDouble("price"),
-                            null
-                    );
-                    products.add(p);
+                    List<Product> products = new ArrayList<>();
+                    try (PreparedStatement psProd = conn.prepareStatement(sqlProd)) {
+                        psProd.setInt(1, id);
+                        try (ResultSet rsProd = psProd.executeQuery()) {
+                            while (rsProd.next()) {
+                                products.add(new Product(
+                                        rsProd.getInt("idProduct"),
+                                        rsProd.getString("name"),
+                                        rsProd.getDouble("price"),
+                                        null
+                                ));
+                            }
+                        }
+                    }
+
+                    return new Order(id, user, products);
                 }
-
-                return new Order(id, user, products);
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
