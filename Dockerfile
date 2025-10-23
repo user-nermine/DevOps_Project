@@ -11,8 +11,6 @@ COPY pom.xml .
 # Copier le code source
 COPY src ./src
 
-# Compiler et packager le projet
-RUN mvn clean package -DskipTests
 
 # Étape 2 : Image finale
 FROM eclipse-temurin:21-jre-jammy
