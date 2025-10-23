@@ -1,5 +1,5 @@
 # Utilise OpenJDK 11 JRE slim pour exécuter le JAR
-FROM openjdk:21-jre-slim
+FROM eclipse-temurin:21-jdk-jammy AS builder
 
 # Variable pour le JAR généré par Maven
 ARG JAR_FILE=target/*.jar
