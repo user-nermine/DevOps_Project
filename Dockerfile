@@ -1,16 +1,15 @@
-FROM alpine:latest
+# Étape 1 : Utiliser une image Maven avec Java 21
+FROM maven:3.9.6-eclipse-temurin-21
 
-# Installer Java 17
-RUN apk add --no-cache openjdk21
-
-# Créer un dossier de travail
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier le fichier .jar dans l'image Docker
-COPY target/*.jar app.jar
+# Copier tout le projet dans le conteneur
+COPY . .
 
-# Exposer un port (si ton appli écoute sur un port, sinon optionnel)
+
+# Exposer le port utilisé par ton application
 EXPOSE 8089
 
-#  Lancer l'application Java
-CMD ["java", "-jar", "app.jar"]
+# Lancer l’application
+CMD ["java", "-jar", "target/app.jar"]
