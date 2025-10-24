@@ -1,15 +1,19 @@
-# Étape 1 : Utiliser une image Maven avec Java 21
-FROM maven:3.9.6-eclipse-temurin-21
+# build stage (optionnel si tu builds localement)
+FROM maven:3.9.2-eclipse-temurin-17 AS build
+WORKDIR /workspace
+COPY pom.xml mvnw ./
+COPY .mvn .mvn
+COPY src src
+RUN mvn -B -DskipTests package
 
-# Définir le répertoire de travail
+# runtime stage
+FROM eclipse-temurin:17-jdk-jammy
 WORKDIR /app
+# copie le jar produit (adapter le nom si nécessaire)
+COPY --from=build /workspace/target/orderapp.jar /app/orderapp.jar
 
-# Copier tout le projet dans le conteneur
-COPY . .
+# si tu veux lancer en headless javaFX (si tu as besoin):
+# ENV JAVA_OPTS="-Djava.awt.headless=true"
 
-
-# Exposer le port utilisé par ton application
 EXPOSE 8089
-
-# Lancer l’application
-CMD ["java", "-jar", "target/app.jar"]
+ENTRYPOINT ["java","-jar","/app/orderapp.jar"]
