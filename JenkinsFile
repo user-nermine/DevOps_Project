@@ -5,6 +5,7 @@ pipeline {
         jdk 'JDK17'
         maven 'Maven3'
     }
+    
 
     stages {
         stage('Checkout') {
@@ -15,12 +16,24 @@ pipeline {
 
         stage('Build') {
     steps {
-            sh "mvn clean install -DskipTests=false"
+            bat "mvn clean install -DskipTests=false"
     }
 }
+stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sq1') { // Nom du serveur Sonar dans Jenkins
+                    bat """
+                        %SCANNER_HOME%/bin/sonar-scanner ^
+                        -Dsonar.projectKey=DevOps_Project ^
+                        -Dsonar.sources=src ^
+                        -Dsonar.java.binaries=target
+                    """
+                }
+            }
+        }
 stage('Debug') {
     steps {
-        sh "dir"
+        bat "dir"
     }
 }
 
