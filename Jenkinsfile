@@ -10,7 +10,7 @@ pipeline {
         DOCKER_PASSWORD = "97442570"
     }
     stages {
-        stage('Checkout GIT') {
+        stage('Checkout GITT') {
             steps {
                 echo 'Pulling code...'
                 git branch: 'Hadil', url: 'https://github.com/user-nermine/DevOps_Project.git'
