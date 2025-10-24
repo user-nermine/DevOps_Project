@@ -19,6 +19,12 @@ pipeline {
                 bat "mvn clean install -DskipTests=false"
             }
         }
+        stage('Tests unitaires') {
+            steps {
+                echo 'Lancement des tests unitaires...'
+                bat 'mvn test'
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
