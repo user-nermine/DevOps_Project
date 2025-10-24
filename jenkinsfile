@@ -1,30 +1,54 @@
 pipeline {
-    agent any
+  agent any
 
-    tools {
-        jdk 'JDK17'
-        maven 'Maven3'
+  tools {
+    jdk   'JDK17'
+    maven 'Maven3'
+  }
+
+  options { timestamps() }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        git branch: 'dhia', url: 'https://github.com/user-nermine/DevOps_Project.git'
+      }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'dhia', url: 'https://github.com/user-nermine/DevOps_Project.git'
-            }
+    stage('Build (tests ON)') {
+      steps {
+        bat 'mvn -B clean install -DskipTests=false'
+      }
+      post {
+        always {
+          // Rapports JUnit (chemins Windows)
+          junit '**\\target\\surefire-reports\\*.xml'
+          archiveArtifacts artifacts: 'target\\*.jar', fingerprint: true
         }
-
-        stage('Build') {
-    steps {
-            bat "mvn clean install -DskipTests=false"
+      }
     }
-}
-stage('Debug') {
-    steps {
-        bat "dir"
-}
-}
 
+    stage('SonarQube Analysis') {
+      steps {
+        // 'my-sonar' = nom configuré dans Manage Jenkins → System → SonarQube servers
+        withSonarQubeEnv('my-sonar') {
+          // Code déjà compilé : on lance seulement l’analyse
+          bat 'mvn -B sonar:sonar'
+        }
+      }
+    }
 
+    stage('Quality Gate') {
+      steps {
+        // Nécessite le webhook Sonar → http://localhost:8080/sonarqube-webhook/
+        timeout(time: 3, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
 
-}
+    stage('Debug') {
+      steps { bat 'dir' }
+    }
+  }
 }
