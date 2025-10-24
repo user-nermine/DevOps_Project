@@ -20,17 +20,17 @@ pipeline {
     }
 }
 stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sq1') { // Nom du serveur Sonar dans Jenkins
-                    bat """
-                        %SCANNER_HOME%/bin/sonar-scanner ^
-                        -Dsonar.projectKey=DevOps_Project ^
-                        -Dsonar.sources=src ^
-                        -Dsonar.java.binaries=target
-                    """
-                }
-            }
+    steps {
+        withSonarQubeEnv('sq1') {    // ou le nom que tu as mis dans Jenkins
+            bat """
+                %SCANNER_HOME%/bin/sonar-scanner ^
+                -Dsonar.projectKey=DevOps_Project ^
+                -Dsonar.sources=src ^
+                -Dsonar.java.binaries=target
+            """
         }
+    }
+}
 stage('Debug') {
     steps {
         bat "dir"
