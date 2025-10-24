@@ -5,8 +5,9 @@ pipeline {
         jdk 'JDK17'
         maven 'Maven3'
     }
-    
+
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'Wiem', url: 'https://github.com/user-nermine/DevOps_Project.git'
@@ -21,7 +22,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sq1') {
+                withSonarQubeEnv('sq1') {  // Le nom configuré dans SonarQube dans Jenkins
                     bat """
                         %SCANNER_HOME%\\bin\\sonar-scanner.bat ^
                         -Dsonar.projectKey=DevOps_Project ^
