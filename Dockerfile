@@ -1,11 +1,25 @@
-# Use an official OpenJDK 21 image as the base
-FROM openjdk:21-jdk-slim
+# --- STAGE 1: Build the application ---
+FROM maven:3.9.8-eclipse-temurin-21 AS build
 
-# Define an argument for the JAR file name (optional, but good practice)
-ARG JAR_FILE=target/*.jar
+# Set the working directory
+WORKDIR /app
 
-# Copy the application's JAR file into the container
-COPY ${JAR_FILE} app.jar
+# Copy the project files
+COPY pom.xml .
+COPY src ./src
 
-# Define the entry point to run the application
+# Build the project, creating the target directory and JAR
+RUN mvn clean package -DskipTests
+
+# --- STAGE 2: Create the final image ---
+# Use a minimal runtime image for the final, lean package
+FROM openjdk:21-jre-slim
+
+# Set the final image's working directory
+WORKDIR /app
+
+# Copy the JAR from the build stage into the final image
+COPY --from=build /app/target/*.jar app.jar
+
+# Define the command to run the application
 ENTRYPOINT ["java", "-jar", "/app.jar"]
