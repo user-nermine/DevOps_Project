@@ -27,7 +27,7 @@ pipeline {
         
         stage('SonarQube Analysis') {
             steps {
-                echo '🔍 Analyse SonarQube (Optionnelle)...'
+                echo '🔍 Analyse SonarQube ...'
                 script {
                     try {
                         withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
@@ -50,7 +50,7 @@ pipeline {
                         echo "ℹ️  Pour activer SonarQube:"
                         echo "    1. Créez un token sur http://host.docker.internal:9000"
                         echo "    2. Ajoutez-le dans Jenkins Credentials"
-                        // NE PAS METTRE currentBuild.result = 'UNSTABLE' ICI
+                       
                     }
                 }
             }
