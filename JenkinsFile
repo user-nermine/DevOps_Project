@@ -6,7 +6,6 @@ pipeline {
         maven 'Maven3'
     }
     
-
     stages {
         stage('Checkout') {
             steps {
@@ -15,29 +14,28 @@ pipeline {
         }
 
         stage('Build') {
-    steps {
-            bat "mvn clean install -DskipTests=false"
-    }
-}
-stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('sq1') {    // ou le nom que tu as mis dans Jenkins
-            bat """
-                %SCANNER_HOME%/bin/sonar-scanner ^
-                -Dsonar.projectKey=DevOps_Project ^
-                -Dsonar.sources=src ^
-                -Dsonar.java.binaries=target
-            """
+            steps {
+                bat "mvn clean install -DskipTests=false"
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sq1') {
+                    bat """
+                        %SCANNER_HOME%\\bin\\sonar-scanner.bat ^
+                        -Dsonar.projectKey=DevOps_Project ^
+                        -Dsonar.sources=src ^
+                        -Dsonar.java.binaries=target
+                    """
+                }
+            }
+        }
+
+        stage('Debug') {
+            steps {
+                bat "dir"
+            }
         }
     }
-}
-stage('Debug') {
-    steps {
-        bat "dir"
-    }
-}
-
-
-
-}
 }
