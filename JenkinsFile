@@ -14,7 +14,7 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build and Test') { 
             steps {
                 bat "mvn clean install -DskipTests=false"
             }
@@ -22,13 +22,8 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sq1') {  // Le nom configuré dans SonarQube dans Jenkins
-                    bat """
-                        %SCANNER_HOME%\\bin\\sonar-scanner.bat ^
-                        -Dsonar.projectKey=DevOps_Project ^
-                        -Dsonar.sources=src ^
-                        -Dsonar.java.binaries=target
-                    """
+                withSonarQubeEnv('sq1') {
+                    bat "mvn sonar:sonar -Dsonar.projectKey=DevOps_Project -Dsonar.sources=src"
                 }
             }
         }
